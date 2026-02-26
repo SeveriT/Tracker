@@ -17,14 +17,15 @@ class WorkoutViewModel(private val dao: WorkoutDao) : ViewModel() {
             initialValue = emptyList()
         )
 
-    fun addWorkout(exercise: String, sets: Int, reps: Int, weight: Float, date: String) {
+    fun addWorkout(exercise: String, sets: Int, reps: Int, weight: Float, date: String, isPersonalBest: Boolean) {
         viewModelScope.launch {
             val newWorkout = Workout(
                 exerciseName = exercise,
                 sets = sets,
                 reps = reps,
                 weight = weight,
-                date = date
+                date = date,
+                isPersonalBest = isPersonalBest
             )
             dao.insertWorkout(newWorkout)
         }
