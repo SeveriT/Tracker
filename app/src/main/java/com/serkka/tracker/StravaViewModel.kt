@@ -1,7 +1,9 @@
 package com.serkka.tracker
 
+import android.app.Application
+import android.content.Context
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,10 +15,11 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 
-class StravaViewModel : ViewModel() {
+class StravaViewModel(application: Application) : AndroidViewModel(application) {
+    private val prefs = application.getSharedPreferences("strava_prefs", Context.MODE_PRIVATE)
+    
     private val _activities = MutableStateFlow<List<StravaActivity>>(emptyList())
     val activities: StateFlow<List<StravaActivity>> = _activities
 
@@ -25,6 +28,9 @@ class StravaViewModel : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
+
+    private val _savedToken = MutableStateFlow(prefs.getString("access_token", "") ?: "")
+    val savedToken: StateFlow<String> = _savedToken
 
     private val stravaApi: StravaApi by lazy {
         val logging = HttpLoggingInterceptor { message ->
@@ -45,6 +51,13 @@ class StravaViewModel : ViewModel() {
             .create(StravaApi::class.java)
     }
 
+    init {
+        // Auto-fetch if token exists
+        if (_savedToken.value.isNotBlank()) {
+            fetchActivities(_savedToken.value)
+        }
+    }
+
     fun fetchActivities(accessToken: String) {
         val trimmedToken = accessToken.trim()
         if (trimmedToken.isBlank()) {
@@ -62,10 +75,14 @@ class StravaViewModel : ViewModel() {
             _isLoading.value = true
             _error.value = null
             try {
-                // Fetch more activities to calculate streaks (e.g., last 200)
+                // Fetch more activities to calculate long streaks
                 val response = stravaApi.getActivities(authHeader, perPage = 200)
                 _activities.value = response
                 
+                // Save token on success
+                prefs.edit().putString("access_token", trimmedToken).apply()
+                _savedToken.value = trimmedToken
+
                 if (response.isEmpty()) {
                     _error.value = "No activities found. Ensure you have activities synced to Strava."
                 }
@@ -88,21 +105,21 @@ class StravaViewModel : ViewModel() {
         }
     }
 
+    fun logout() {
+        prefs.edit().remove("access_token").apply()
+        _savedToken.value = ""
+        _activities.value = emptyList()
+    }
+
     fun clearError() {
         _error.value = null
     }
 
-    /**
-     * Returns a map of date strings to the list of activity types on that day.
-     */
     fun getActivityData(): Map<String, List<String>> {
         return _activities.value.groupBy { it.startDate.substringBefore("T") }
             .mapValues { entry -> entry.value.map { it.type } }
     }
 
-    /**
-     * Calculates the weekly streak (consecutive weeks with at least one activity).
-     */
     fun getWeeklyStreak(): Int {
         val activityDates = _activities.value
             .map { LocalDate.parse(it.startDate.substringBefore("T")) }
@@ -114,7 +131,6 @@ class StravaViewModel : ViewModel() {
         var currentStreak = 0
         var checkDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         
-        // If no activity this week yet, start checking from last week
         val activitiesThisWeek = activityDates.any { !it.isBefore(checkDate) }
         if (!activitiesThisWeek) {
             checkDate = checkDate.minusWeeks(1)
@@ -134,8 +150,42 @@ class StravaViewModel : ViewModel() {
         return currentStreak
     }
 
+    /**
+     * Returns the total number of activities done during the current consecutive weekly streak.
+     */
     fun getTotalStreakActivities(): Int {
-        // For simplicity, returning total activities in the list for now
-        return _activities.value.size
+        val allActivities = _activities.value
+        if (allActivities.isEmpty()) return 0
+
+        val activityDates = allActivities
+            .map { LocalDate.parse(it.startDate.substringBefore("T")) }
+            .distinct()
+            .sortedDescending()
+
+        var checkDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val hasActivitiesThisWeek = activityDates.any { !it.isBefore(checkDate) }
+        if (!hasActivitiesThisWeek) {
+            checkDate = checkDate.minusWeeks(1)
+        }
+
+        var totalActivitiesCount = 0
+
+        while (true) {
+            val weekStart = checkDate
+            val weekEnd = checkDate.plusWeeks(1)
+            
+            val activitiesInWeek = allActivities.filter { 
+                val date = LocalDate.parse(it.startDate.substringBefore("T"))
+                (date.isEqual(weekStart) || date.isAfter(weekStart)) && date.isBefore(weekEnd)
+            }
+
+            if (activitiesInWeek.isNotEmpty()) {
+                totalActivitiesCount += activitiesInWeek.size
+                checkDate = checkDate.minusWeeks(1)
+            } else {
+                break
+            }
+        }
+        return totalActivitiesCount
     }
 }

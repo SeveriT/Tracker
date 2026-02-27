@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
         scheduleBackup()
 
         setContent {
-            GymTrackerTheme {
+            GymTrackerTheme(dynamicColor = false)  {
                 // 3. Create the ViewModel using a Factory
                 val viewModel: WorkoutViewModel = viewModel(
                     factory = object : ViewModelProvider.Factory {
