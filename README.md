@@ -1,2 +1,2 @@
 # Weightlifting-Tracker
-Android app for tracking workouts
+Android app for workout tracking
