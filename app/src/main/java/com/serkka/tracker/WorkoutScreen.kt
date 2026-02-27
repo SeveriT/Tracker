@@ -6,24 +6,32 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -40,7 +48,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.TextStyle
+import java.time.temporal.TemporalAdjusters
 import java.util.*
+
+enum class Screen {
+    Workouts, StravaCalendar
+}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -48,10 +65,15 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val backupManager = remember { BackupManager(context) }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var currentScreen by remember { mutableStateOf(Screen.Workouts) }
     
     val workouts by viewModel.allWorkouts.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     val currentSong by MediaRepository.getInstance().currentSong.collectAsState()
+
+    // Strava ViewModel
+    val stravaViewModel: StravaViewModel = viewModel()
 
     // Google Sign-In Setup
     val gso = remember {
@@ -97,7 +119,6 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
 
                         val driveHelper = GoogleDriveHelper(driveService)
                         
-                        // Checkpoint DB
                         val db = WorkoutDatabase.getDatabase(context)
                         db.query(androidx.sqlite.db.SimpleSQLiteQuery("PRAGMA wal_checkpoint(FULL)")).use { cursor ->
                             cursor.moveToFirst()
@@ -154,83 +175,395 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
         }
     }
 
-    val groupedWorkouts = workouts.groupBy { SimpleDateFormat("d.M.yy", Locale.getDefault()).format(Date(it.date)) }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Tracker") },
-                actions = {
-                    IconButton(onClick = performDriveBackup) {
-                        Icon(Icons.Default.CloudUpload, "Drive Backup", tint = MaterialTheme.colorScheme.onSurface)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Spacer(modifier = Modifier.height(16.dp))
+                NavigationDrawerItem(
+                    label = { Text("Workouts") },
+                    icon = { Icon(Icons.Default.List, null) },
+                    selected = currentScreen == Screen.Workouts,
+                    onClick = {
+                        currentScreen = Screen.Workouts
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+                NavigationDrawerItem(
+                    label = { Text("Strava Calendar") },
+                    icon = { Icon(Icons.Default.DateRange, null) },
+                    selected = currentScreen == Screen.StravaCalendar,
+                    onClick = {
+                        currentScreen = Screen.StravaCalendar
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+            }
+        }
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(if (currentScreen == Screen.Workouts) "Tracker" else "Strava Training") },
+                    navigationIcon = {
+                        IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = performDriveBackup) {
+                            Icon(Icons.Default.CloudUpload, "Drive Backup", tint = MaterialTheme.colorScheme.onSurface)
+                        }
+                        TextButton(onClick = { backupLauncher.launch("workout_backup.db") }) {
+                            Text("Backup", color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        TextButton(onClick = { restoreLauncher.launch(arrayOf("*/*")) }) {
+                            Text("Restore", color = MaterialTheme.colorScheme.onSurface)
+                        }
                     }
-                    TextButton(onClick = { backupLauncher.launch("workout_backup.db") }) {
-                        Text("Backup", color = MaterialTheme.colorScheme.onSurface)
-                    }
-                    TextButton(onClick = { restoreLauncher.launch(arrayOf("*/*")) }) {
-                        Text("Restore", color = MaterialTheme.colorScheme.onSurface)
+                )
+            },
+            floatingActionButton = {
+                if (currentScreen == Screen.Workouts) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (currentSong.title != null) {
+                            Surface(
+                                color = DarkBackground,
+                                shape = MaterialTheme.shapes.large,
+                                tonalElevation = 4.dp,
+                                modifier = Modifier.height(56.dp).widthIn(max = 240.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    IconButton(onClick = { MediaRepository.getInstance().togglePlayPause() }) {
+                                        Icon(
+                                            imageVector = if (currentSong.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                            contentDescription = "Play/Pause",
+                                            tint = if (currentSong.isPlaying) OrangePrimary else Color.Gray
+                                        )
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(currentSong.title ?: "", maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White)
+                                        Text(currentSong.artist ?: "", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    }
+                                    IconButton(onClick = { MediaRepository.getInstance().nextTrack() }) {
+                                        Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White)
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        FloatingActionButton(onClick = { showDialog = true }, containerColor = DarkBackground, contentColor = OrangePrimary) {
+                            Text("+", style = MaterialTheme.typography.headlineMedium)
+                        }
                     }
                 }
+            },
+            floatingActionButtonPosition = FabPosition.Center
+        ) { padding ->
+            Box(modifier = Modifier.padding(padding)) {
+                when (currentScreen) {
+                    Screen.Workouts -> {
+                        WorkoutListContent(workouts, viewModel)
+                    }
+                    Screen.StravaCalendar -> {
+                        StravaCalendarPage(stravaViewModel)
+                    }
+                }
+            }
+
+            if (showDialog) {
+                AddWorkoutDialog(onDismiss = { showDialog = false }, onAdd = { exercise, sets, reps, weight, dateMillis, isPB ->
+                    viewModel.addWorkout(exercise, sets, reps, weight, dateMillis, isPB)
+                    showDialog = false
+                })
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun WorkoutListContent(workouts: List<Workout>, viewModel: WorkoutViewModel) {
+    val groupedWorkouts = workouts.groupBy { 
+        SimpleDateFormat("d.M.yy", Locale.getDefault()).format(Date(it.date)) 
+    }
+    
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        groupedWorkouts.forEach { (date, workoutsInDay) ->
+            stickyHeader {
+                Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background.copy(alpha = 0.9f)) {
+                    Text(date, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(8.dp))
+                }
+            }
+            items(workoutsInDay) { workout -> 
+                WorkoutCard(workout = workout, onDelete = { viewModel.deleteWorkout(workout) }) 
+            }
+        }
+    }
+}
+
+@Composable
+fun StravaCalendarPage(stravaViewModel: StravaViewModel) {
+    val context = LocalContext.current
+    val activities by stravaViewModel.activities.collectAsState()
+    val isLoading by stravaViewModel.isLoading.collectAsState()
+    val error by stravaViewModel.error.collectAsState()
+    var token by remember { mutableStateOf("") }
+    
+    val activityData = remember(activities) { stravaViewModel.getActivityData() }
+    val streak = remember(activities) { stravaViewModel.getWeeklyStreak() }
+    val totalStreakActivities = remember(activities) { stravaViewModel.getTotalStreakActivities() }
+
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (activities.isEmpty() && !isLoading) {
+            Text("Link Strava to see your progress", style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = token,
+                onValueChange = { token = it; stravaViewModel.clearError() },
+                label = { Text("Enter Strava Access Token") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = error != null
             )
-        },
-        floatingActionButton = {
+            if (error != null) {
+                Text(
+                    text = error ?: "Unknown error",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            Button(
+                onClick = { stravaViewModel.fetchActivities(token) },
+                enabled = token.isNotBlank() && !isLoading,
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Text("Fetch Activities")
+            }
+        } else {
+            val currentMonth = YearMonth.now()
+            val monthName = currentMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
+            val year = currentMonth.year
+
+            // Header Section
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (currentSong.title != null) {
-                    Surface(
-                        color = DarkBackground,
-                        shape = MaterialTheme.shapes.large,
-                        tonalElevation = 4.dp,
-                        modifier = Modifier.height(56.dp).widthIn(max = 240.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            IconButton(onClick = { MediaRepository.getInstance().togglePlayPause() }) {
-                                Icon(
-                                    imageVector = if (currentSong.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = "Play/Pause",
-                                    tint = if (currentSong.isPlaying) OrangePrimary else Color.Gray
-                                )
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(currentSong.title ?: "", maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White)
-                                Text(currentSong.artist ?: "", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                            }
-                            IconButton(onClick = { MediaRepository.getInstance().nextTrack() }) {
-                                Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White)
+                Text(
+                    text = "$monthName $year",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                OutlinedButton(
+                    onClick = { /* Share functionality */ },
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Share", fontSize = 12.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Stats Section
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                Column {
+                    Text("Your Streak", color = Color.Gray, fontSize = 12.sp)
+                    Text("$streak Weeks", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                }
+                Column {
+                    Text("Streak Activities", color = Color.Gray, fontSize = 12.sp)
+                    Text("$totalStreakActivities", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            StravaCalendar(activityData, streak)
+            
+            Spacer(modifier = Modifier.weight(1f))
+            
+            Button(
+                onClick = { stravaViewModel.fetchActivities(token) }, 
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+            ) {
+                if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                else Text("Refresh Data")
+            }
+        }
+    }
+}
+
+@Composable
+fun StravaCalendar(activityData: Map<String, List<String>>, streak: Int) {
+    val currentMonth = YearMonth.now()
+    val daysInMonth = currentMonth.lengthOfMonth()
+    
+    // Monday = 0, Sunday = 6
+    val firstDayOfMonth = (currentMonth.atDay(1).dayOfWeek.value - 1)
+    
+    val days = (1..daysInMonth).toList()
+    val year = currentMonth.year
+    val monthValue = currentMonth.monthValue
+
+    Column {
+        // Day Headers
+        Row(modifier = Modifier.fillMaxWidth().padding(end = 48.dp)) { // Padding for streak column
+            listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
+                Text(
+                    text = day,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Calendar Grid
+            Column(modifier = Modifier.fillMaxWidth().padding(end = 48.dp)) {
+                var currentDayIndex = 0
+                val totalSlots = firstDayOfMonth + daysInMonth
+                val rows = (totalSlots + 6) / 7
+
+                for (row in 0 until rows) {
+                    Row(modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                        for (col in 0 until 7) {
+                            val slotIndex = row * 7 + col
+                            if (slotIndex < firstDayOfMonth || currentDayIndex >= daysInMonth) {
+                                // Previous/Next month days
+                                Box(modifier = Modifier.weight(1f).aspectRatio(1f), contentAlignment = Alignment.Center) {
+                                    val dayNum = if (slotIndex < firstDayOfMonth) {
+                                        val prevMonth = currentMonth.minusMonths(1)
+                                        prevMonth.lengthOfMonth() - (firstDayOfMonth - slotIndex - 1)
+                                    } else {
+                                        slotIndex - (firstDayOfMonth + daysInMonth) + 1
+                                    }
+                                    Text(text = dayNum.toString(), color = Color.DarkGray, fontSize = 14.sp)
+                                }
+                            } else {
+                                currentDayIndex++
+                                val day = currentDayIndex
+                                val dateString = String.format("%04d-%02d-%02d", year, monthValue, day)
+                                val activitiesOnDay = activityData[dateString] ?: emptyList()
+                                
+                                Box(
+                                    modifier = Modifier.weight(1f).aspectRatio(1f),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (activitiesOnDay.isNotEmpty()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .background(Color.White, CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = getIconForActivity(activitiesOnDay.first()),
+                                                contentDescription = null,
+                                                tint = Color.Black,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Text(text = day.toString(), color = Color.Gray, fontSize = 14.sp)
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.weight(1f))
-                FloatingActionButton(onClick = { showDialog = true }, containerColor = DarkBackground, contentColor = OrangePrimary) {
-                    Text("+", style = MaterialTheme.typography.headlineMedium)
-                }
             }
-        },
-        floatingActionButtonPosition = FabPosition.Center
-    ) { padding ->
-        LazyColumn(contentPadding = padding, modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-            groupedWorkouts.forEach { (date, workoutsInDay) ->
-                stickyHeader {
-                    Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background.copy(alpha = 0.9f)) {
-                        Text(date, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(8.dp))
+
+            // Streak Column on the right
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .width(40.dp)
+                    .padding(top = 4.dp)
+            ) {
+                val totalSlots = firstDayOfMonth + daysInMonth
+                val rows = (totalSlots + 6) / 7
+                
+                Box(
+                    modifier = Modifier
+                        .width(36.dp)
+                        .height((rows * 56).dp)
+                        .background(Color(0xFF2A1500), RoundedCornerShape(18.dp)) // Dark orange background
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxHeight()) {
+                        repeat(rows - 1) { rowIndex ->
+                            // Check if this week had activities
+                            val weekStartDay = if (rowIndex == 0) 1 else (rowIndex * 7 - firstDayOfMonth + 1)
+                            val weekEndDay = minOf(daysInMonth, (rowIndex + 1) * 7 - firstDayOfMonth)
+                            var hasActivity = false
+                            for (d in weekStartDay..weekEndDay) {
+                                val dateStr = String.format("%04d-%02d-%02d", year, monthValue, d)
+                                if (activityData.containsKey(dateStr)) {
+                                    hasActivity = true
+                                    break
+                                }
+                            }
+
+                            Box(modifier = Modifier.size(24.dp).background(if (hasActivity) Color(0xFFE65100) else Color.Transparent, CircleShape), contentAlignment = Alignment.Center) {
+                                if (hasActivity) {
+                                    Icon(Icons.Default.Check, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                        
+                        // Current Streak at bottom
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Whatshot, null, tint = Color(0xFFE65100), modifier = Modifier.size(32.dp))
+                            Text(streak.toString(), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 14.sp, modifier = Modifier.offset(y = (-8).dp))
+                        }
                     }
                 }
-                items(workoutsInDay) { workout -> WorkoutCard(workout = workout, onDelete = { viewModel.deleteWorkout(workout) }) }
             }
         }
-        if (showDialog) {
-            AddWorkoutDialog(onDismiss = { showDialog = false }, onAdd = { exercise, sets, reps, weight, dateMillis, isPB ->
-                viewModel.addWorkout(exercise, sets, reps, weight, dateMillis, isPB)
-                showDialog = false
-            })
-        }
+    }
+}
+
+private fun getIconForActivity(type: String): ImageVector {
+    return when (type) {
+        "WeightTraining" -> Icons.Default.FitnessCenter
+        "Run" -> Icons.Default.DirectionsRun
+        "Ride" -> Icons.Default.DirectionsBike
+        "Swim" -> Icons.Default.Waves
+        "Walk" -> Icons.Default.DirectionsWalk
+        "Yoga" -> Icons.Default.SelfImprovement
+        "Hike" -> Icons.Default.Terrain
+        else -> Icons.Default.Star
     }
 }
 
