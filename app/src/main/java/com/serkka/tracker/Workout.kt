@@ -12,5 +12,6 @@ data class Workout(
     val reps: Int,
     val weight: Float,
     val isPersonalBest: Boolean = false,
-    val weightUnit: String = "kg"
+    val weightUnit: String = "kg",
+    val notes: String = ""
 )

@@ -17,7 +17,7 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
             initialValue = emptyList()
         )
 
-    fun addWorkout(exercise: String, sets: Int, reps: Int, weight: Float, dateMillis: Long, isPersonalBest: Boolean, weightUnit: String = "kg") {
+    fun addWorkout(exercise: String, sets: Int, reps: Int, weight: Float, dateMillis: Long, isPersonalBest: Boolean, weightUnit: String = "kg", notes: String = "") {
         viewModelScope.launch {
             val newWorkout = Workout(
                 exerciseName = exercise,
@@ -26,7 +26,8 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
                 weight = weight,
                 date = dateMillis,
                 isPersonalBest = isPersonalBest,
-                weightUnit = weightUnit
+                weightUnit = weightUnit,
+                notes = notes
             )
             repository.addWorkout(newWorkout)
         }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
@@ -31,6 +32,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -261,7 +263,7 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
                         Surface(
                             color = DarkBackground,
                             shape =  MaterialTheme.shapes.large,
-                            tonalElevation = 4.dp,
+                            tonalElevation = 2.dp,
                             modifier = Modifier
                                 .height(56.dp)
                                 .weight(1f) // Fill available space
@@ -343,8 +345,8 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
             if (showAddDialog) {
                 WorkoutDialog(
                     onDismiss = { showAddDialog = false },
-                    onConfirm = { exercise, sets, reps, weight, dateMillis, isPB, weightUnit ->
-                        viewModel.addWorkout(exercise, sets, reps, weight, dateMillis, isPB, weightUnit)
+                    onConfirm = { exercise, sets, reps, weight, dateMillis, isPB, weightUnit, notes ->
+                        viewModel.addWorkout(exercise, sets, reps, weight, dateMillis, isPB, weightUnit, notes)
                         showAddDialog = false
                     }
                 )
@@ -354,7 +356,7 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
                 WorkoutDialog(
                     workout = workout,
                     onDismiss = { editingWorkout = null },
-                    onConfirm = { exercise, sets, reps, weight, dateMillis, isPB, weightUnit ->
+                    onConfirm = { exercise, sets, reps, weight, dateMillis, isPB, weightUnit, notes ->
                         viewModel.updateWorkout(workout.copy(
                             exerciseName = exercise,
                             sets = sets,
@@ -362,7 +364,8 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
                             weight = weight,
                             date = dateMillis,
                             isPersonalBest = isPB,
-                            weightUnit = weightUnit
+                            weightUnit = weightUnit,
+                            notes = notes
                         ))
                         editingWorkout = null
                     }
@@ -379,7 +382,10 @@ fun WorkoutListContent(workouts: List<Workout>, viewModel: WorkoutViewModel, onE
         SimpleDateFormat("d.M.yy", Locale.getDefault()).format(Date(it.date)) 
     }
     
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(bottom = 85.dp)
+    ) {
         groupedWorkouts.forEach { (date, workoutsInDay) ->
             stickyHeader {
                 Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background.copy(alpha = 0.9f)) {
@@ -477,7 +483,15 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel) {
                     color = Color.White
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { stravaViewModel.checkAndFetchActivities() }) {
+                        if (isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = OrangePrimary, strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Refresh, "Refresh", tint = Color.Gray)
+                        }
+                    }
                     if (profilePicUrl.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(8.dp))
                         AsyncImage(
                             model = profilePicUrl,
                             contentDescription = "Profile Picture",
@@ -513,19 +527,6 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel) {
             StravaCalendar(activityData, streak)
             
             Spacer(modifier = Modifier.weight(1f))
-            
-            Button(
-                onClick = { stravaViewModel.checkAndFetchActivities() },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray,
-                    contentColor = Color.White
-                )
-            ) {
-                if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                else Text("Refresh Data")
-            }
         }
     }
 }
@@ -731,10 +732,22 @@ fun WorkoutCard(workout: Workout, onDelete: () -> Unit, onEdit: () -> Unit) {
                 )
                 val details = buildString {
                     if (workout.sets > 0) append("${workout.sets} sets ")
-                    if (workout.reps > 0) append("x ${workout.reps} reps ")
+                    if (workout.reps > 0) {
+                        if (workout.sets > 0) append("x ")
+                        append("${workout.reps} reps ")
+                    }
                     if (workout.weight > 0) append("@ ${workout.weight}${workout.weightUnit}")
                 }
-                Text(details, color = Color.Black)
+                Text(details, color = Color.Black, style = MaterialTheme.typography.bodyLarge)
+                if (workout.notes.isNotBlank()) {
+                    Text(
+                        workout.notes,
+                        color = Color.Black,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Black)
@@ -748,13 +761,14 @@ fun WorkoutCard(workout: Workout, onDelete: () -> Unit, onEdit: () -> Unit) {
 fun WorkoutDialog(
     workout: Workout? = null,
     onDismiss: () -> Unit, 
-    onConfirm: (String, Int, Int, Float, Long, Boolean, String) -> Unit
+    onConfirm: (String, Int, Int, Float, Long, Boolean, String, String) -> Unit
 ) {
     var exercise by remember { mutableStateOf(workout?.exerciseName ?: "") }
     var sets by remember { mutableStateOf(workout?.sets?.toString() ?: "") }
     var reps by remember { mutableStateOf(workout?.reps?.toString() ?: "") }
     var weight by remember { mutableStateOf(workout?.weight?.toString() ?: "") }
     var weightUnit by remember { mutableStateOf(workout?.weightUnit ?: "kg") }
+    var notes by remember { mutableStateOf(workout?.notes ?: "") }
     var isPB by remember { mutableStateOf(workout?.isPersonalBest ?: false) }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = workout?.date ?: System.currentTimeMillis())
     var showDatePicker by remember { mutableStateOf(false) }
@@ -770,7 +784,12 @@ fun WorkoutDialog(
         title = { Text(if (workout == null) "Add Workout" else "Edit Workout") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = exercise, onValueChange = { exercise = it }, label = { Text("Exercise") })
+                OutlinedTextField(
+                    value = exercise,
+                    onValueChange = { exercise = it },
+                    label = { Text("Exercise") },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = sets, onValueChange = { sets = it }, label = { Text("Sets") }, modifier = Modifier.weight(1f))
                     OutlinedTextField(value = reps, onValueChange = { reps = it }, label = { Text("Reps") }, modifier = Modifier.weight(1f))
@@ -791,6 +810,16 @@ fun WorkoutDialog(
                         Text("cm")
                     }
                 }
+                
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notes (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 2,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                )
+
                 OutlinedTextField(
                     value = SimpleDateFormat("d.M.yy", Locale.getDefault()).format(Date(datePickerState.selectedDateMillis ?: System.currentTimeMillis())),
                     onValueChange = {},
@@ -806,7 +835,7 @@ fun WorkoutDialog(
         },
         confirmButton = {
             Button(onClick = { 
-                onConfirm(exercise, sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0, weight.toFloatOrNull() ?: 0f, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), isPB, weightUnit)
+                onConfirm(exercise, sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0, weight.toFloatOrNull() ?: 0f, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), isPB, weightUnit, notes)
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
