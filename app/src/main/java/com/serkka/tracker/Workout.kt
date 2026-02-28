@@ -6,10 +6,11 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "workouts")
 data class Workout(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val date: Long, // Changed from String to Long for better sorting and flexibility
+    val date: Long,
     val exerciseName: String,
     val sets: Int,
     val reps: Int,
     val weight: Float,
-    val isPersonalBest: Boolean = false
+    val isPersonalBest: Boolean = false,
+    val weightUnit: String = "kg"
 )

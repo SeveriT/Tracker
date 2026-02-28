@@ -74,7 +74,8 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
     var currentScreen by remember { mutableStateOf(Screen.Workouts) }
     
     val workouts by viewModel.allWorkouts.collectAsState()
-    var showDialog by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingWorkout by remember { mutableStateOf<Workout?>(null) }
     val currentSong by MediaRepository.getInstance().currentSong.collectAsState()
 
     // Strava ViewModel
@@ -230,7 +231,7 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(if (currentScreen == Screen.Workouts) "Tracker" else "Strava Training") },
+                    title = { Text(if (currentScreen == Screen.Workouts) "Workouts" else "Strava Training") },
                     navigationIcon = {
                         IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
@@ -315,7 +316,7 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
                     
                     if (currentScreen == Screen.Workouts) {
                         FloatingActionButton(
-                            onClick = { showDialog = true },
+                            onClick = { showAddDialog = true },
                             containerColor = DarkBackground,
                             contentColor = OrangePrimary
                         ) {
@@ -329,7 +330,9 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
             Box(modifier = Modifier.padding(padding)) {
                 when (currentScreen) {
                     Screen.Workouts -> {
-                        WorkoutListContent(workouts, viewModel)
+                        WorkoutListContent(workouts, viewModel) { workout -> 
+                            editingWorkout = workout
+                        }
                     }
                     Screen.StravaCalendar -> {
                         StravaCalendarPage(stravaViewModel)
@@ -337,11 +340,33 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
                 }
             }
 
-            if (showDialog) {
-                AddWorkoutDialog(onDismiss = { showDialog = false }, onAdd = { exercise, sets, reps, weight, dateMillis, isPB ->
-                    viewModel.addWorkout(exercise, sets, reps, weight, dateMillis, isPB)
-                    showDialog = false
-                })
+            if (showAddDialog) {
+                WorkoutDialog(
+                    onDismiss = { showAddDialog = false },
+                    onConfirm = { exercise, sets, reps, weight, dateMillis, isPB, weightUnit ->
+                        viewModel.addWorkout(exercise, sets, reps, weight, dateMillis, isPB, weightUnit)
+                        showAddDialog = false
+                    }
+                )
+            }
+
+            editingWorkout?.let { workout ->
+                WorkoutDialog(
+                    workout = workout,
+                    onDismiss = { editingWorkout = null },
+                    onConfirm = { exercise, sets, reps, weight, dateMillis, isPB, weightUnit ->
+                        viewModel.updateWorkout(workout.copy(
+                            exerciseName = exercise,
+                            sets = sets,
+                            reps = reps,
+                            weight = weight,
+                            date = dateMillis,
+                            isPersonalBest = isPB,
+                            weightUnit = weightUnit
+                        ))
+                        editingWorkout = null
+                    }
+                )
             }
         }
     }
@@ -349,7 +374,7 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun WorkoutListContent(workouts: List<Workout>, viewModel: WorkoutViewModel) {
+fun WorkoutListContent(workouts: List<Workout>, viewModel: WorkoutViewModel, onEdit: (Workout) -> Unit) {
     val groupedWorkouts = workouts.groupBy { 
         SimpleDateFormat("d.M.yy", Locale.getDefault()).format(Date(it.date)) 
     }
@@ -362,7 +387,11 @@ fun WorkoutListContent(workouts: List<Workout>, viewModel: WorkoutViewModel) {
                 }
             }
             items(workoutsInDay) { workout -> 
-                WorkoutCard(workout = workout, onDelete = { viewModel.deleteWorkout(workout) }) 
+                WorkoutCard(
+                    workout = workout, 
+                    onDelete = { viewModel.deleteWorkout(workout) },
+                    onEdit = { onEdit(workout) }
+                ) 
             }
         }
     }
@@ -679,10 +708,13 @@ private fun getIconForActivity(type: String): ImageVector {
 }
 
 @Composable
-fun WorkoutCard(workout: Workout, onDelete: () -> Unit) {
+fun WorkoutCard(workout: Workout, onDelete: () -> Unit, onEdit: () -> Unit) {
     val backgroundColor = if (workout.isPersonalBest) PersonalBestGold else OrangePrimary
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .clickable { onEdit() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
         Row(
@@ -700,7 +732,7 @@ fun WorkoutCard(workout: Workout, onDelete: () -> Unit) {
                 val details = buildString {
                     if (workout.sets > 0) append("${workout.sets} sets ")
                     if (workout.reps > 0) append("x ${workout.reps} reps ")
-                    if (workout.weight > 0) append("@ ${workout.weight}kg")
+                    if (workout.weight > 0) append("@ ${workout.weight}${workout.weightUnit}")
                 }
                 Text(details, color = Color.Black)
             }
@@ -713,13 +745,18 @@ fun WorkoutCard(workout: Workout, onDelete: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddWorkoutDialog(onDismiss: () -> Unit, onAdd: (String, Int, Int, Float, Long, Boolean) -> Unit) {
-    var exercise by remember { mutableStateOf("") }
-    var sets by remember { mutableStateOf("") }
-    var reps by remember { mutableStateOf("") }
-    var weight by remember { mutableStateOf("") }
-    var isPB by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+fun WorkoutDialog(
+    workout: Workout? = null,
+    onDismiss: () -> Unit, 
+    onConfirm: (String, Int, Int, Float, Long, Boolean, String) -> Unit
+) {
+    var exercise by remember { mutableStateOf(workout?.exerciseName ?: "") }
+    var sets by remember { mutableStateOf(workout?.sets?.toString() ?: "") }
+    var reps by remember { mutableStateOf(workout?.reps?.toString() ?: "") }
+    var weight by remember { mutableStateOf(workout?.weight?.toString() ?: "") }
+    var weightUnit by remember { mutableStateOf(workout?.weightUnit ?: "kg") }
+    var isPB by remember { mutableStateOf(workout?.isPersonalBest ?: false) }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = workout?.date ?: System.currentTimeMillis())
     var showDatePicker by remember { mutableStateOf(false) }
 
     if (showDatePicker) {
@@ -730,7 +767,7 @@ fun AddWorkoutDialog(onDismiss: () -> Unit, onAdd: (String, Int, Int, Float, Lon
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Workout") },
+        title = { Text(if (workout == null) "Add Workout" else "Edit Workout") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(value = exercise, onValueChange = { exercise = it }, label = { Text("Exercise") })
@@ -738,7 +775,22 @@ fun AddWorkoutDialog(onDismiss: () -> Unit, onAdd: (String, Int, Int, Float, Lon
                     OutlinedTextField(value = sets, onValueChange = { sets = it }, label = { Text("Sets") }, modifier = Modifier.weight(1f))
                     OutlinedTextField(value = reps, onValueChange = { reps = it }, label = { Text("Reps") }, modifier = Modifier.weight(1f))
                 }
-                OutlinedTextField(value = weight, onValueChange = { weight = it }, label = { Text("Weight (kg)") })
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = weight, 
+                        onValueChange = { weight = it }, 
+                        label = { Text("Weight") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    // Simple Unit Selector
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = weightUnit == "kg", onClick = { weightUnit = "kg" })
+                        Text("kg")
+                        RadioButton(selected = weightUnit == "cm", onClick = { weightUnit = "cm" })
+                        Text("cm")
+                    }
+                }
                 OutlinedTextField(
                     value = SimpleDateFormat("d.M.yy", Locale.getDefault()).format(Date(datePickerState.selectedDateMillis ?: System.currentTimeMillis())),
                     onValueChange = {},
@@ -754,7 +806,7 @@ fun AddWorkoutDialog(onDismiss: () -> Unit, onAdd: (String, Int, Int, Float, Lon
         },
         confirmButton = {
             Button(onClick = { 
-                onAdd(exercise, sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0, weight.toFloatOrNull() ?: 0f, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), isPB)
+                onConfirm(exercise, sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0, weight.toFloatOrNull() ?: 0f, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), isPB, weightUnit)
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
