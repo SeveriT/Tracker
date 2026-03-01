@@ -10,6 +10,7 @@ class MediaRepository private constructor() {
     private var nextTrackAction: (() -> Unit)? = null
     private var previousTrackAction: (() -> Unit)? = null
     private var togglePlayPauseAction: (() -> Unit)? = null
+    private var openAppAction: (() -> Unit)? = null
 
     fun updateSong(info: SongInfo) {
         _currentSong.value = info
@@ -27,6 +28,10 @@ class MediaRepository private constructor() {
         previousTrackAction = action
     }
 
+    fun setOpenAppAction(action: () -> Unit) {
+        openAppAction = action
+    }
+
     fun nextTrack() {
         nextTrackAction?.invoke()
     }
@@ -37,6 +42,10 @@ class MediaRepository private constructor() {
 
     fun togglePlayPause() {
         togglePlayPauseAction?.invoke()
+    }
+
+    fun openApp() {
+        openAppAction?.invoke()
     }
 
     companion object {

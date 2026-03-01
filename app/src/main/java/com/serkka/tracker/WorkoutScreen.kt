@@ -263,7 +263,7 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
                         Surface(
                             color = DarkBackground,
                             shape =  MaterialTheme.shapes.large,
-                            tonalElevation = 2.dp,
+                            tonalElevation = 1.dp,
                             modifier = Modifier
                                 .height(56.dp)
                                 .weight(1f) // Fill available space
@@ -281,7 +281,11 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
                                         tint = if (currentSong.isPlaying) OrangePrimary else Color.Gray
                                     )
                                 }
-                                Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) { // Added internal padding to keep text safe
+                                Column(modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 8.dp)
+                                    .clickable { MediaRepository.getInstance().openApp() }
+                                ) { // Added internal padding to keep text safe
                                     Text(currentSong.title ?: "",
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -320,7 +324,8 @@ fun WorkoutScreen(viewModel: WorkoutViewModel) {
                         FloatingActionButton(
                             onClick = { showAddDialog = true },
                             containerColor = DarkBackground,
-                            contentColor = OrangePrimary
+                            contentColor = OrangePrimary,
+                            elevation = FloatingActionButtonDefaults.elevation(1.dp)
                         ) {
                             Text("+", style = MaterialTheme.typography.headlineMedium)
                         }
@@ -664,7 +669,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, st
                                 // Current week indicator: Lightning Bolt with Streak count on top
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        imageVector = Icons.Default.Bolt, 
+                                        imageVector = Icons.Default.Bolt,
                                         contentDescription = null, 
                                         tint = Color(0xFFE65100), 
                                         modifier = Modifier.size(36.dp)

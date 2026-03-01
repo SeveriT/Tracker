@@ -11,7 +11,8 @@ import android.service.notification.StatusBarNotification
 data class SongInfo(
     val title: String? = null,
     val artist: String? = null,
-    val isPlaying: Boolean = false
+    val isPlaying: Boolean = false,
+    val packageName: String? = null
 )
 
 class MediaNotificationListener : NotificationListenerService() {
@@ -37,6 +38,7 @@ class MediaNotificationListener : NotificationListenerService() {
         mediaRepository.setNextTrackAction { skipToNext() }
         mediaRepository.setPreviousTrackAction { skipToPrevious() }
         mediaRepository.setTogglePlayPauseAction { togglePlayPause() }
+        mediaRepository.setOpenAppAction { openApp() }
     }
 
     override fun onListenerConnected() {
@@ -64,7 +66,8 @@ class MediaNotificationListener : NotificationListenerService() {
         val info = SongInfo(
             title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
             artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
-            isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING
+            isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING,
+            packageName = activeController?.packageName
         )
         mediaRepository.updateSong(info)
     }
@@ -91,6 +94,18 @@ class MediaNotificationListener : NotificationListenerService() {
             activeController?.transportControls?.pause()
         } else {
             activeController?.transportControls?.play()
+        }
+    }
+
+    private fun openApp() {
+        activeController?.sessionActivity?.send() ?: run {
+            activeController?.packageName?.let { pkg ->
+                val intent = packageManager.getLaunchIntentForPackage(pkg)
+                if (intent != null) {
+                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                }
+            }
         }
     }
 }
