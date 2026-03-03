@@ -86,6 +86,7 @@ fun WorkoutScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingWorkout by remember { mutableStateOf<Workout?>(null) }
+    var workoutToDelete by remember { mutableStateOf<Workout?>(null) }
     val currentSong by MediaRepository.getInstance().currentSong.collectAsState()
 
     val primaryColor by themeViewModel.primaryColor.collectAsState()
@@ -429,13 +430,15 @@ fun WorkoutScreen(
                 }
             },
             floatingActionButtonPosition = FabPosition.Center
-        ) { padding ->
-            Box(modifier = Modifier.padding(padding)) {
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding)) {
                 when (currentScreen) {
                     Screen.Workouts -> {
-                        WorkoutListContent(workouts, viewModel) { workout -> 
-                            editingWorkout = workout
-                        }
+                        WorkoutListContent(
+                            workouts = workouts,
+                            onDelete = { workoutToDelete = it },
+                            onEdit = { editingWorkout = it }
+                        )
                     }
                     Screen.StravaCalendar -> {
                         StravaCalendarPage(stravaViewModel, primaryColor)
@@ -474,6 +477,30 @@ fun WorkoutScreen(
                             notes = notes
                         ))
                         editingWorkout = null
+                    }
+                )
+            }
+
+            workoutToDelete?.let { workout ->
+                AlertDialog(
+                    onDismissRequest = { workoutToDelete = null },
+                    title = { Text("Delete Workout") },
+                    text = { Text("Are you sure you want to delete this ${workout.exerciseName} workout?") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                viewModel.deleteWorkout(workout)
+                                workoutToDelete = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Delete")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { workoutToDelete = null }) {
+                            Text("Cancel")
+                        }
                     }
                 )
             }
@@ -571,7 +598,11 @@ fun WeightStatsPage(workouts: List<Workout>, primaryColor: Color) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun WorkoutListContent(workouts: List<Workout>, viewModel: WorkoutViewModel, onEdit: (Workout) -> Unit) {
+fun WorkoutListContent(
+    workouts: List<Workout>,
+    onDelete: (Workout) -> Unit,
+    onEdit: (Workout) -> Unit
+) {
     val groupedWorkouts = workouts.groupBy { 
         SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(it.date))
     }
@@ -589,7 +620,7 @@ fun WorkoutListContent(workouts: List<Workout>, viewModel: WorkoutViewModel, onE
             items(workoutsInDay) { workout -> 
                 WorkoutCard(
                     workout = workout, 
-                    onDelete = { viewModel.deleteWorkout(workout) },
+                    onDelete = { onDelete(workout) },
                     onEdit = { onEdit(workout) }
                 ) 
             }
