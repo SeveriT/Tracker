@@ -99,6 +99,7 @@ fun WorkoutScreen(
     var showAddWorkoutDialog by remember { mutableStateOf(false) }
     var showAddWeightDialog by remember { mutableStateOf(false) }
     var editingWorkout by remember { mutableStateOf<Workout?>(null) }
+    var copyingWorkout by remember { mutableStateOf<Workout?>(null) }
     var editingWeight by remember { mutableStateOf<BodyWeight?>(null) }
     var workoutToDelete by remember { mutableStateOf<Workout?>(null) }
     var weightToDelete by remember { mutableStateOf<BodyWeight?>(null) }
@@ -477,7 +478,8 @@ fun WorkoutScreen(
                         WorkoutListContent(
                             workouts = workouts,
                             onDelete = { workoutToDelete = it },
-                            onEdit = { editingWorkout = it }
+                            onEdit = { editingWorkout = it },
+                            onCopy = { copyingWorkout = it }
                         )
                     }
                     Screen.StravaCalendar -> {
@@ -533,6 +535,18 @@ fun WorkoutScreen(
                             notes = notes
                         ))
                         editingWorkout = null
+                    }
+                )
+            }
+
+            copyingWorkout?.let { workout ->
+                WorkoutDialog(
+                    workout = workout.copy(id = 0, date = System.currentTimeMillis()),
+                    history = workoutHistory,
+                    onDismiss = { copyingWorkout = null },
+                    onConfirm = { exercise, sets, reps, weight, dateMillis, isPB, weightUnit, notes ->
+                        viewModel.addWorkout(exercise, sets, reps, weight, dateMillis, isPB, weightUnit, notes)
+                        copyingWorkout = null
                     }
                 )
             }
@@ -898,7 +912,8 @@ fun BodyWeightDialog(
 fun WorkoutListContent(
     workouts: List<Workout>,
     onDelete: (Workout) -> Unit,
-    onEdit: (Workout) -> Unit
+    onEdit: (Workout) -> Unit,
+    onCopy: (Workout) -> Unit
 ) {
     val groupedWorkouts = workouts.groupBy { 
         SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(it.date))
@@ -918,7 +933,8 @@ fun WorkoutListContent(
                 WorkoutCard(
                     workout = workout, 
                     onDelete = { onDelete(workout) },
-                    onEdit = { onEdit(workout) }
+                    onEdit = { onEdit(workout) },
+                    onCopy = { onCopy(workout) }
                 ) 
             }
         }
@@ -1241,7 +1257,7 @@ private fun getIconForActivity(type: String): ImageVector {
 }
 
 @Composable
-fun WorkoutCard(workout: Workout, onDelete: () -> Unit, onEdit: () -> Unit) {
+fun WorkoutCard(workout: Workout, onDelete: () -> Unit, onEdit: () -> Unit, onCopy: () -> Unit) {
     val backgroundColor = if (workout.isPersonalBest) PersonalBestGold else MaterialTheme.colorScheme.primary
     Card(
         modifier = Modifier
@@ -1280,6 +1296,9 @@ fun WorkoutCard(workout: Workout, onDelete: () -> Unit, onEdit: () -> Unit) {
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+            }
+            IconButton(onClick = onCopy) {
+                Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.Black)
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Black)
@@ -1384,7 +1403,7 @@ fun WorkoutDialog(
         modifier = Modifier
             .fillMaxSize().wrapContentSize(Alignment.BottomCenter)
             .padding(24.dp)
-            .padding(bottom = 24.dp)
+            .padding(bottom = 42.dp)
             .fillMaxWidth(),
         title = { Text(if (workout == null) "Add Workout" else "Edit Workout") },
         text = {
