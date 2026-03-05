@@ -1,14 +1,13 @@
 package com.serkka.tracker
 
-import android.R
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Paint
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -22,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -60,6 +61,9 @@ import com.google.api.services.drive.DriveScopes
 import com.serkka.tracker.ui.theme.DarkBackground
 import com.serkka.tracker.ui.theme.OrangePrimary
 import com.serkka.tracker.ui.theme.PersonalBestGold
+import com.serkka.tracker.ui.theme.PBGlow
+import com.serkka.tracker.ui.theme.SurfaceColor
+import com.serkka.tracker.ui.theme.WidgetColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -75,6 +79,10 @@ enum class Screen {
     Workouts, StravaCalendar, WeightTracking, WorkoutStats
 }
 
+private fun formatWeight(weight: Float): String {
+    return if (weight % 1 == 0f) weight.toInt().toString() else weight.toString()
+}
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutScreen(
@@ -87,10 +95,10 @@ fun WorkoutScreen(
     val backupManager = remember { BackupManager(context) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var currentScreen by remember { mutableStateOf(Screen.Workouts) }
-    
+
     val workouts by viewModel.allWorkouts.collectAsState()
     val bodyWeights by viewModel.allBodyWeights.collectAsState()
-    
+
     val workoutHistory = remember(workouts) {
         workouts.sortedWith(compareByDescending<Workout> { it.date }.thenByDescending { it.id })
             .distinctBy { it.exerciseName }
@@ -150,7 +158,7 @@ fun WorkoutScreen(
                         ).setApplicationName("Tracker").build()
 
                         val driveHelper = GoogleDriveHelper(driveService)
-                        
+
                         val db = WorkoutDatabase.getDatabase(context)
                         db.query(androidx.sqlite.db.SimpleSQLiteQuery("PRAGMA wal_checkpoint(FULL)")).use { cursor ->
                             cursor.moveToFirst()
@@ -158,7 +166,7 @@ fun WorkoutScreen(
 
                         val dbFile = context.getDatabasePath("workout_db")
                         val fileId = driveHelper.uploadFile(dbFile, "application/x-sqlite3", "workout_backup_auto.db")
-                        
+
                         withContext(Dispatchers.Main) {
                             if (fileId != null) {
                                 Toast.makeText(context, "Drive backup successful!", Toast.LENGTH_SHORT).show()
@@ -181,7 +189,7 @@ fun WorkoutScreen(
     val backupLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
-        uri?.let { 
+        uri?.let {
             coroutineScope.launch {
                 if (backupManager.backupDatabase(it)) {
                     Toast.makeText(context, "Local backup successful", Toast.LENGTH_SHORT).show()
@@ -289,58 +297,48 @@ fun WorkoutScreen(
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray.copy(alpha = 0.3f))
-                
+
                 Text(
-                    "Theme Color",
+                    "Theme Accent Color",
                     style = MaterialTheme.typography.labelLarge,
                     color = Color.Gray,
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp)
                 )
-                
-                val colors = listOf(
-                    Color(0xFFEE6517), // Original Orange
-                    Color(0xFFE0882F),
-                    Color(0xFFE0DD2F),
-                    Color(0xFFB1E02F),
-                    Color(0xFF5EE02F),
-                    Color(0xFF2FE093),
-                    Color(0xFF2FE0CB),
-                    Color(0xFF2FA8E0),
-                    Color(0xFF2F70E0),
-                    Color(0xFF552FE0),
-                    Color(0xFF9B46E7),
-                    Color(0xFFE541C2),
-                    Color(0xFFE35151),
-                    Color(0xFFFFFFFF),
-                    Color(0xFFADADAD),
-                    Color(0xFF7A7A7A)
-                )
-                
-                val itemsPerRow = 4
-                val rows = colors.chunked(itemsPerRow)
-                
-                Column(modifier = Modifier.padding(horizontal = 28.dp)) {
-                    rows.forEach { rowColors ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            rowColors.forEach { color ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(color)
-                                        .border(
-                                            width = if (primaryColor.toArgb() == color.toArgb()) 3.dp else 1.dp,
-                                            color = Color.White,
-                                            shape = CircleShape
-                                        )
-                                        .clickable { themeViewModel.updatePrimaryColor(color) }
-                                )
-                            }
-                        }
-                    }
+
+                Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp)) {
+                    val r = (primaryColor.red * 255).toInt()
+                    val g = (primaryColor.green * 255).toInt()
+                    val b = (primaryColor.blue * 255).toInt()
+
+                    Text("Red: $r", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
+                    Slider(
+                        value = primaryColor.red,
+                        onValueChange = { themeViewModel.updatePrimaryColor(primaryColor.copy(red = it)) },
+                        colors = SliderDefaults.colors(thumbColor = Color.Red, activeTrackColor = Color.Red)
+                    )
+
+                    Text("Green: $g", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
+                    Slider(
+                        value = primaryColor.green,
+                        onValueChange = { themeViewModel.updatePrimaryColor(primaryColor.copy(green = it)) },
+                        colors = SliderDefaults.colors(thumbColor = Color.Green, activeTrackColor = Color.Green)
+                    )
+
+                    Text("Blue: $b", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
+                    Slider(
+                        value = primaryColor.blue,
+                        onValueChange = { themeViewModel.updatePrimaryColor(primaryColor.copy(blue = it)) },
+                        colors = SliderDefaults.colors(thumbColor = Color.Blue, activeTrackColor = Color.Blue)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(primaryColor)
+                            .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                    )
                 }
             }
         }
@@ -348,7 +346,7 @@ fun WorkoutScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { 
+                    title = {
                         Text(when(currentScreen) {
                             Screen.Workouts -> "Workouts"
                             Screen.StravaCalendar -> "Strava Training"
@@ -390,9 +388,10 @@ fun WorkoutScreen(
                 ) {
                     if (currentSong.title != null) {
                         Surface(
-                            color = DarkBackground,
+                            color = WidgetColor,
                             shape =  MaterialTheme.shapes.large,
                             tonalElevation = 1.dp,
+                            shadowElevation = 5.dp,
                             modifier = Modifier
                                 .height(56.dp)
                                 .weight(1f)
@@ -426,7 +425,7 @@ fun WorkoutScreen(
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.Gray)
                                 }
-                                
+
                                 Box(
                                     modifier = Modifier
                                         .size(48.dp)
@@ -448,22 +447,22 @@ fun WorkoutScreen(
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
                     }
-                    
+
                     if (currentScreen == Screen.Workouts) {
                         FloatingActionButton(
                             onClick = { showAddWorkoutDialog = true },
-                            containerColor = DarkBackground,
-                            contentColor = primaryColor,
-                            elevation = FloatingActionButtonDefaults.elevation(1.dp)
+                            containerColor = primaryColor,
+                            contentColor = Color.Black,
+                            elevation = FloatingActionButtonDefaults.elevation(4.dp)
                         ) {
-                            Text("+", style = MaterialTheme.typography.headlineMedium)
+                            Icon(Icons.Default.Add, "Add Workout", modifier = Modifier.size(32.dp))
                         }
                     } else if (currentScreen == Screen.WeightTracking) {
                         FloatingActionButton(
                             onClick = { showAddWeightDialog = true },
-                            containerColor = DarkBackground,
-                            contentColor = primaryColor,
-                            elevation = FloatingActionButtonDefaults.elevation(1.dp)
+                            containerColor = primaryColor,
+                            contentColor = Color.Black,
+                            elevation = FloatingActionButtonDefaults.elevation(4.dp)
                         ) {
                             Icon(Icons.Default.MonitorWeight, "Add Weight")
                         }
@@ -477,6 +476,7 @@ fun WorkoutScreen(
                     Screen.Workouts -> {
                         WorkoutListContent(
                             workouts = workouts,
+                            primaryColor = primaryColor,
                             onDelete = { workoutToDelete = it },
                             onEdit = { editingWorkout = it },
                             onCopy = { copyingWorkout = it }
@@ -486,7 +486,7 @@ fun WorkoutScreen(
                         StravaCalendarPage(stravaViewModel, primaryColor)
                     }
                     Screen.WeightTracking -> {
-                        WeightTrackingPage(bodyWeights, primaryColor, 
+                        WeightTrackingPage(bodyWeights, primaryColor,
                             onWeightClick = { editingWeight = it },
                             onWeightDelete = { weightToDelete = it }
                         )
@@ -615,13 +615,13 @@ fun WorkoutScreen(
 
 @Composable
 fun WeightTrackingPage(
-    bodyWeights: List<BodyWeight>, 
+    bodyWeights: List<BodyWeight>,
     primaryColor: Color,
     onWeightClick: (BodyWeight) -> Unit,
     onWeightDelete: (BodyWeight) -> Unit
 ) {
     val sortedWeights = remember(bodyWeights) { bodyWeights.sortedBy { it.date } }
-    
+
     val prediction = remember(sortedWeights) {
         if (sortedWeights.size < 2) null
         else {
@@ -646,13 +646,14 @@ fun WeightTrackingPage(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = primaryColor.copy(alpha = 0.1f))
+                    colors = CardDefaults.cardColors(containerColor = SurfaceColor),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Column {
                                 Text("Current Weight", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                                Text("${sortedWeights.last().weight} kg", style = MaterialTheme.typography.headlineMedium, color = primaryColor, fontWeight = FontWeight.Bold)
+                                Text("${formatWeight(sortedWeights.last().weight)} kg", style = MaterialTheme.typography.headlineMedium, color = primaryColor, fontWeight = FontWeight.Bold)
                             }
                             prediction?.let { (_, rate) ->
                                 Column(horizontalAlignment = Alignment.End) {
@@ -662,14 +663,14 @@ fun WeightTrackingPage(
                                 }
                             }
                         }
-                        
+
                         prediction?.let { (pred, _) ->
                             Spacer(modifier = Modifier.height(16.dp))
                             Text("30-Day Prediction: ${String.format(Locale.getDefault(), "%.1f", pred)} kg", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
-                        
+
                         Box(modifier = Modifier.fillMaxWidth().height(200.dp).padding(vertical = 8.dp)) {
                             WeightChart(weights = sortedWeights, color = primaryColor)
                         }
@@ -684,12 +685,12 @@ fun WeightTrackingPage(
             items(sortedWeights.reversed()) { weightEntry ->
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onWeightClick(weightEntry) },
-                    colors = CardDefaults.cardColors(containerColor = DarkBackground.copy(alpha = 0.5f))
+                    colors = CardDefaults.cardColors(containerColor = SurfaceColor)
                 ) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(weightEntry.date)), color = Color.Gray, style = MaterialTheme.typography.labelSmall)
-                            Text("${weightEntry.weight} kg", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("${formatWeight(weightEntry.weight)} kg", color = Color.White, fontWeight = FontWeight.Bold)
                             if (weightEntry.notes.isNotEmpty()) {
                                 Text(weightEntry.notes, color = Color.Gray, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
@@ -705,7 +706,7 @@ fun WeightTrackingPage(
                 Text("Add your first weight entry to see progress!", color = Color.Gray, modifier = Modifier.padding(bottom = 24.dp))
             }
         }
-        
+
         item {
             Spacer(modifier = Modifier.height(100.dp))
         }
@@ -718,7 +719,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
         workouts.filter { it.weightUnit == "kg" }
             .groupBy { it.exerciseName }
             .mapValues { entry ->
-                entry.value.sumOf { 
+                entry.value.sumOf {
                     val s = if (it.sets > 0) it.sets.toLong() else 1L
                     val r = if (it.reps > 0) it.reps.toLong() else 1L
                     s * r * it.weight.toDouble()
@@ -727,7 +728,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
             .toList()
             .sortedByDescending { it.second }
     }
-    
+
     val totalWeightLifted = workoutStats.sumOf { it.second }
 
     LazyColumn(
@@ -737,7 +738,8 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
         item {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = primaryColor.copy(alpha = 0.1f))
+                colors = CardDefaults.cardColors(containerColor = SurfaceColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp).fillMaxWidth(),
@@ -754,7 +756,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                 }
             }
         }
-        
+
         item {
             Text(
                 "Breakdown by Exercise",
@@ -765,35 +767,40 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
         }
 
         items(workoutStats) { (exercise, weight) ->
-            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        exercise,
-                        modifier = Modifier.weight(1f),
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        "${String.format(Locale.getDefault(), "%,.0f", weight)} kg",
-                        fontWeight = FontWeight.Bold,
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceColor)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            exercise,
+                            modifier = Modifier.weight(1f),
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            "${String.format(Locale.getDefault(), "%,.0f", weight)} kg",
+                            fontWeight = FontWeight.Bold,
+                            color = primaryColor,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        progress = { if (totalWeightLifted > 0) (weight / totalWeightLifted).toFloat() else 0f },
+                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
                         color = primaryColor,
-                        style = MaterialTheme.typography.bodyLarge
+                        trackColor = Color.Gray.copy(alpha = 0.1f),
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { if (totalWeightLifted > 0) (weight / totalWeightLifted).toFloat() else 0f },
-                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
-                    color = primaryColor,
-                    trackColor = Color.Gray.copy(alpha = 0.2f),
-                )
             }
         }
-        
+
         item {
             Spacer(modifier = Modifier.height(100.dp))
         }
@@ -803,11 +810,11 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
 @Composable
 fun WeightChart(weights: List<BodyWeight>, color: Color) {
     if (weights.isEmpty()) return
-    
+
     val minWeight = weights.minOf { it.weight } - 1f
     val maxWeight = weights.maxOf { it.weight } + 1f
     val weightRange = maxOf(1f, maxWeight - minWeight)
-    
+
     val minDate = weights.first().date
     val maxDate = weights.last().date
     val dateRange = maxOf(1L, maxDate - minDate)
@@ -815,7 +822,7 @@ fun WeightChart(weights: List<BodyWeight>, color: Color) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val width = size.width
         val height = size.height
-        
+
         val points = weights.map { weight ->
             val x = if (dateRange == 0L) width / 2 else ((weight.date - minDate).toFloat() / dateRange.toFloat()) * width
             val y = height - ((weight.weight - minWeight) / weightRange) * height
@@ -834,8 +841,22 @@ fun WeightChart(weights: List<BodyWeight>, color: Color) {
                 color = color,
                 style = Stroke(width = 3.dp.toPx())
             )
+
+            // Draw gradient fill
+            val fillPath = Path().apply {
+                addPath(path)
+                lineTo(width, height)
+                lineTo(0f, height)
+                close()
+            }
+            drawPath(
+                path = fillPath,
+                brush = Brush.verticalGradient(
+                    colors = listOf(color.copy(alpha = 0.2f), Color.Transparent)
+                )
+            )
         }
-        
+
         points.forEach { point ->
             drawCircle(color = color, radius = 4.dp.toPx(), center = point)
         }
@@ -849,7 +870,7 @@ fun BodyWeightDialog(
     onDismiss: () -> Unit,
     onConfirm: (Float, Long, String) -> Unit
 ) {
-    var weight by remember { mutableStateOf(bodyWeight?.weight?.toString() ?: "") }
+    var weight by remember { mutableStateOf(bodyWeight?.weight?.let { formatWeight(it) } ?: "") }
     var notes by remember { mutableStateOf(bodyWeight?.notes ?: "") }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = bodyWeight?.date ?: System.currentTimeMillis())
     var showDatePicker by remember { mutableStateOf(false) }
@@ -875,7 +896,7 @@ fun BodyWeightDialog(
                     modifier = Modifier.fillMaxWidth(),
                     step = 0.1f
                 )
-                
+
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
@@ -896,7 +917,7 @@ fun BodyWeightDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { 
+            Button(onClick = {
                 val w = weight.toFloatOrNull() ?: 0f
                 if (w > 0) {
                     onConfirm(w, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), notes)
@@ -911,31 +932,42 @@ fun BodyWeightDialog(
 @Composable
 fun WorkoutListContent(
     workouts: List<Workout>,
+    primaryColor: Color,
     onDelete: (Workout) -> Unit,
     onEdit: (Workout) -> Unit,
     onCopy: (Workout) -> Unit
 ) {
-    val groupedWorkouts = workouts.groupBy { 
+    val groupedWorkouts = workouts.groupBy {
         SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(it.date))
     }
-    
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
         contentPadding = PaddingValues(bottom = 85.dp)
     ) {
         groupedWorkouts.forEach { (date, workoutsInDay) ->
             stickyHeader {
-                Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background.copy(alpha = 0.9f)) {
-                    Text(date, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(8.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
+                ) {
+                    Text(
+                        date,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
+                        color = primaryColor,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
-            items(workoutsInDay) { workout -> 
+            items(workoutsInDay) { workout ->
                 WorkoutCard(
-                    workout = workout, 
+                    workout = workout,
+                    primaryColor = primaryColor,
                     onDelete = { onDelete(workout) },
                     onEdit = { onEdit(workout) },
                     onCopy = { onCopy(workout) }
-                ) 
+                )
             }
         }
     }
@@ -948,7 +980,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
     val isLoading by stravaViewModel.isLoading.collectAsState()
     val error by stravaViewModel.error.collectAsState()
     val profilePicUrl by stravaViewModel.profilePicUrl.collectAsState()
-    
+
     val activityData = remember(activities) { stravaViewModel.getActivityData() }
     val streak = remember(activities) { stravaViewModel.getWeeklyStreak() }
     val totalStreakActivities = remember(activities) { stravaViewModel.getTotalStreakActivities() }
@@ -972,7 +1004,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
             item {
                 Text("Link Strava to see your progress", style = MaterialTheme.typography.bodyLarge)
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Button(
                     onClick = {
                         val authUri = Uri.parse("https://www.strava.com/oauth/mobile/authorize")
@@ -983,54 +1015,59 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                             .appendQueryParameter("approval_prompt", "force")
                             .appendQueryParameter("scope", "activity:read_all,profile:read_all")
                             .build()
-                        
+
                         context.startActivity(Intent(Intent.ACTION_VIEW, authUri))
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = primaryColor, contentColor = Color.White)
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryColor, contentColor = Color.Black)
                 ) {
                     Text("Login with Strava")
                 }
             }
         } else {
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceColor)
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Column(horizontalAlignment = Alignment.Start) {
-                            Text("Streak", color = Color.Gray, fontSize = 10.sp)
-                            Text("$streak Weeks" , fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
-                        }
-                        Column(horizontalAlignment = Alignment.Start) {
-                            Text("Total activities", color = Color.Gray, fontSize = 10.sp)
-                            Text("$totalStreakActivities", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
-                        }
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { stravaViewModel.checkAndFetchActivities() }) {
-                            if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = primaryColor, strokeWidth = 2.dp)
-                            } else {
-                                Icon(Icons.Default.Refresh, "Refresh", tint = Color.Gray)
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Column(horizontalAlignment = Alignment.Start) {
+                                Text("Streak", color = Color.Gray, fontSize = 10.sp)
+                                Text("$streak Weeks" , fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                            }
+                            Column(horizontalAlignment = Alignment.Start) {
+                                Text("Total activities", color = Color.Gray, fontSize = 10.sp)
+                                Text("$totalStreakActivities", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                             }
                         }
-                        if (profilePicUrl.isNotEmpty()) {
-                            AsyncImage(
-                                model = profilePicUrl,
-                                contentDescription = "Profile Picture",
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .border(1.dp, Color.Gray, CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
-                        IconButton(onClick = { stravaViewModel.logout() }) {
-                            Icon(Icons.AutoMirrored.Filled.Logout, "Logout", tint = Color.Gray)
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { stravaViewModel.checkAndFetchActivities() }) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = primaryColor, strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Default.Refresh, "Refresh", tint = Color.Gray)
+                                }
+                            }
+                            if (profilePicUrl.isNotEmpty()) {
+                                AsyncImage(
+                                    model = profilePicUrl,
+                                    contentDescription = "Profile Picture",
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .border(1.dp, Color.Gray, CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            IconButton(onClick = { stravaViewModel.logout() }) {
+                                Icon(Icons.AutoMirrored.Filled.Logout, "Logout", tint = Color.Gray)
+                            }
                         }
                     }
                 }
@@ -1043,7 +1080,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                 StravaCalendar(month, activityData, primaryColor)
                 Spacer(modifier = Modifier.height(32.dp))
             }
-            
+
             item {
                 Spacer(modifier = Modifier.height(80.dp))
             }
@@ -1080,7 +1117,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -1109,7 +1146,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                                 val dateString = String.format(Locale.getDefault(), "%04d-%02d-%02d", year, monthValue, day)
                                 val activitiesOnDay = activityData[dateString] ?: emptyList()
                                 val isToday = today.year == year && today.monthValue == monthValue && today.dayOfMonth == day
-                                
+
                                 Box(
                                     modifier = Modifier.weight(1f).aspectRatio(1f),
                                     contentAlignment = Alignment.Center
@@ -1149,7 +1186,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
 
             val totalSlots = firstDayOfMonth + daysInMonth
             val rows = (totalSlots + 6) / 7
-            
+
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -1169,9 +1206,9 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                         ) {
                             val weekStartDay = if (rowIndex == 0) 1 else (rowIndex * 7 - firstDayOfMonth + 1)
                             val weekEndDay = minOf(daysInMonth, (rowIndex + 1) * 7 - firstDayOfMonth)
-                            
+
                             val isCurrentWeek = isActualCurrentMonth && today.dayOfMonth in weekStartDay..weekEndDay
-                            
+
                             if (isCurrentWeek) {
                                 val lastMonday = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(1)
                                 var hasActivityLastWeek = false
@@ -1183,7 +1220,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                                         break
                                     }
                                 }
-                                
+
                                 if (hasActivityLastWeek) {
                                     Box(
                                         modifier = Modifier
@@ -1193,8 +1230,8 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Bolt,
-                                            contentDescription = null, 
-                                            tint = primaryColor, 
+                                            contentDescription = null,
+                                            tint = primaryColor,
                                             modifier = Modifier.size(32.dp)
                                         )
                                     }
@@ -1257,51 +1294,93 @@ private fun getIconForActivity(type: String): ImageVector {
 }
 
 @Composable
-fun WorkoutCard(workout: Workout, onDelete: () -> Unit, onEdit: () -> Unit, onCopy: () -> Unit) {
-    val backgroundColor = if (workout.isPersonalBest) PersonalBestGold else MaterialTheme.colorScheme.primary
+fun WorkoutCard(workout: Workout, primaryColor: Color, onDelete: () -> Unit, onEdit: () -> Unit, onCopy: () -> Unit) {
+    val accentColor = if (workout.isPersonalBest) PersonalBestGold else primaryColor
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(vertical = 4.dp)
             .clickable { onEdit() },
-        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+        colors = CardDefaults.cardColors(containerColor = SurfaceColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    workout.exerciseName,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.Black,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+            // Accent Bar
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(4.dp)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(accentColor, accentColor.copy(alpha = 0.5f))
+                        )
+                    )
+            )
+
+            Column(modifier = Modifier.weight(1f).padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        workout.exerciseName,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (workout.isPersonalBest) {
+                        Surface(
+                            color = PBGlow,
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) {
+                            Text(
+                                "PB",
+                                color = PersonalBestGold,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
                 val details = buildString {
                     if (workout.sets > 0) append("${workout.sets} sets ")
                     if (workout.reps > 0) {
                         if (workout.sets > 0) append("x ")
                         append("${workout.reps} reps ")
                     }
-                    if (workout.weight > 0) append("@ ${workout.weight}${workout.weightUnit}")
+                    if (workout.weight > 0) append("@ ${formatWeight(workout.weight)}${workout.weightUnit}")
                 }
-                Text(details, color = Color.Black, style = MaterialTheme.typography.bodyLarge)
+                Text(details, color = Color.LightGray, style = MaterialTheme.typography.bodyLarge)
+
                 if (workout.notes.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         workout.notes,
-                        color = Color.Black,
-                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodySmall,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
                 }
             }
-            IconButton(onClick = onCopy) {
-                Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.Black)
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Black)
+
+            Row(modifier = Modifier.padding(end = 8.dp)) {
+                IconButton(onClick = onCopy) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.Gray, modifier = Modifier.size(20.dp))
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+                }
             }
         }
     }
@@ -1329,7 +1408,7 @@ fun NumericInput(
                     onClick = {
                         val current = value.toFloatOrNull() ?: 0f
                         if (current >= step) {
-                            onValueChange((current - step).let { if (it % 1 == 0f) it.toInt().toString() else it.toString() })
+                            onValueChange(formatWeight(current - step))
                         }
                     },
                     modifier = Modifier.size(24.dp)
@@ -1344,7 +1423,7 @@ fun NumericInput(
                 IconButton(
                     onClick = {
                         val current = value.toFloatOrNull() ?: 0f
-                        onValueChange((current + step).let { if (it % 1 == 0f) it.toInt().toString() else it.toString() })
+                        onValueChange(formatWeight(current + step))
                     },
                     modifier = Modifier.size(24.dp)
                 ) {
@@ -1360,15 +1439,15 @@ fun NumericInput(
 fun WorkoutDialog(
     workout: Workout? = null,
     history: List<Workout> = emptyList(),
-    onDismiss: () -> Unit, 
+    onDismiss: () -> Unit,
     onConfirm: (String, Int, Int, Float, Long, Boolean, String, String) -> Unit
 ) {
     var exercise by remember { mutableStateOf(workout?.exerciseName ?: "") }
     var expanded by remember { mutableStateOf(false) }
-    
+
     var sets by remember { mutableStateOf(workout?.sets?.toString() ?: "") }
     var reps by remember { mutableStateOf(workout?.reps?.toString() ?: "") }
-    var weight by remember { mutableStateOf(workout?.weight?.toString() ?: "") }
+    var weight by remember { mutableStateOf(workout?.weight?.let { formatWeight(it) } ?: "") }
     val weightUnit = "kg"
     var notes by remember { mutableStateOf(workout?.notes ?: "") }
     var isPB by remember { mutableStateOf(workout?.isPersonalBest ?: false) }
@@ -1420,7 +1499,7 @@ fun WorkoutDialog(
                                     exercise = recent.exerciseName
                                     sets = recent.sets.toString()
                                     reps = recent.reps.toString()
-                                    weight = recent.weight.toString()
+                                    weight = formatWeight(recent.weight)
                                 },
                                 label = { Text(recent.exerciseName) }
                             )
@@ -1435,7 +1514,7 @@ fun WorkoutDialog(
                 ) {
                     OutlinedTextField(
                         value = exercise,
-                        onValueChange = { 
+                        onValueChange = {
                             exercise = it
                             expanded = true
                         },
@@ -1445,7 +1524,7 @@ fun WorkoutDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                     )
-                    
+
                     ExposedDropdownMenu(
                         expanded = expanded && suggestions.isNotEmpty(),
                         onDismissRequest = { expanded = false }
@@ -1458,7 +1537,7 @@ fun WorkoutDialog(
                                     history.find { it.exerciseName == suggestion }?.let { recent ->
                                         sets = recent.sets.toString()
                                         reps = recent.reps.toString()
-                                        weight = recent.weight.toString()
+                                        weight = formatWeight(recent.weight)
                                     }
                                     expanded = false
                                 },
@@ -1470,13 +1549,13 @@ fun WorkoutDialog(
 
                 lastPerformance?.let { last ->
                     Text(
-                        text = "Last time: ${last.sets}x${last.reps} @ ${last.weight}${last.weightUnit}",
+                        text = "Last time: ${last.sets}x${last.reps} @ ${formatWeight(last.weight)}${last.weightUnit}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 4.dp).clickable {
                             sets = last.sets.toString()
                             reps = last.reps.toString()
-                            weight = last.weight.toString()
+                            weight = formatWeight(last.weight)
                         }
                     )
                 }
@@ -1485,15 +1564,15 @@ fun WorkoutDialog(
                     NumericInput(value = sets, onValueChange = { sets = it }, label = "Sets", modifier = Modifier.weight(1f))
                     NumericInput(value = reps, onValueChange = { reps = it }, label = "Reps", modifier = Modifier.weight(1f))
                 }
-                
+
                 NumericInput(
-                    value = weight, 
-                    onValueChange = { weight = it }, 
+                    value = weight,
+                    onValueChange = { weight = it },
                     label = "Weight (kg)",
                     modifier = Modifier.fillMaxWidth(),
                     step = 2.5f
                 )
-                
+
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
@@ -1518,7 +1597,7 @@ fun WorkoutDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { 
+            Button(onClick = {
                 onConfirm(exercise, sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0, weight.toFloatOrNull() ?: 0f, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), isPB, weightUnit, notes)
             }) { Text("Save") }
         },

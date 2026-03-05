@@ -12,9 +12,12 @@ val Pink40 = Color(0xFF7D5260)
 
 // Custom colors for sticky headers
 val LightBlueVariant = Color(0xFFE1E2EC)
-val DarkBlueVariant = Color(0xFF111111)
+val DarkBlueVariant = Color(0xFF1E1E1E)
 
 // App specific colors
-val OrangePrimary = Color(0xFFEE6517)
-val DarkBackground = Color(0xFF111111)
-val PersonalBestGold = Color(0xFFFFEB3B)
+val OrangePrimary = Color(0xFFFF6D00) // More vibrant orange
+val DarkBackground = Color(0xFF0A0A0A) // Deep black but not pure
+val SurfaceColor = Color(0xFF0F0F0F) // Slightly darker
+val WidgetColor = Color(0xFF0C0C0C) // Slightly darker
+val PersonalBestGold = Color(0xFFFFD700) // True Gold
+val PBGlow = Color(0x33FFD700)
