@@ -2,11 +2,12 @@ package com.serkka.tracker
 
 import android.app.Activity
 import android.content.Intent
-import android.icu.text.ListFormatter
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -16,7 +17,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -333,12 +333,15 @@ fun WorkoutScreen(
                         .padding(vertical = 6.dp)
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp), color = Color.Gray.copy(alpha = 0.3f))
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                    color = Color.Gray.copy(alpha = 0.3f)
+                )
 
                 Spacer(modifier = Modifier.weight(1f))
 
                 Text(
-                    "Accent Color (RGB)",
+                    text = "Accent Color (RGB)",
                     style = MaterialTheme.typography.labelLarge,
                     color = MenuItemColor,
                     modifier = Modifier.padding(horizontal = 36.dp, vertical = 8.dp)
@@ -386,7 +389,6 @@ fun WorkoutScreen(
                                 thumbTrackGapSize = 4.dp
                             )
                         }
-
                     )
 
                     Slider(
@@ -407,7 +409,6 @@ fun WorkoutScreen(
                             )
                         }
                     )
-
                 }
             }
         }
@@ -416,39 +417,43 @@ fun WorkoutScreen(
             topBar = {
                 TopAppBar(
                     title = {
-                        Text(when(currentScreen) {
-                            Screen.Workouts -> "Workouts"
-                            Screen.StravaCalendar -> "Strava Calendar"
-                            Screen.WeightTracking -> "Weight Tracking"
-                            Screen.WorkoutStats -> "Workout Stats"
-                            Screen.Notes -> "Notes"
-                        })
+                        Text(
+                            text = when (currentScreen) {
+                                Screen.Workouts -> "Workouts"
+                                Screen.StravaCalendar -> "Strava Calendar"
+                                Screen.WeightTracking -> "Weight Tracking"
+                                Screen.WorkoutStats -> "Workout Stats"
+                                Screen.Notes -> "Notes"
+                            }
+                        )
                     },
                     navigationIcon = {
                         IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     },
-                    actions = { if (currentScreen == Screen.Workouts || currentScreen == Screen.Notes) {
-                        IconButton(onClick = performDriveBackup) {
-                            Icon(Icons.Default.CloudUpload, "Drive Backup", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                        IconButton(onClick = { backupLauncher.launch("workout_backup.db") }) {
-                            Icon(Icons.Default.Save, "Local Backup", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                        IconButton(onClick = { restoreLauncher.launch(arrayOf("*/*")) }) {
-                            Icon(Icons.Default.SettingsBackupRestore, "Restore", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                        IconButton(onClick = {
-                            googleSignInClient.signOut().addOnCompleteListener {
-                                Toast.makeText(context, "Google signed out", Toast.LENGTH_SHORT).show()
+                    actions = {
+                        if (currentScreen == Screen.Workouts || currentScreen == Screen.Notes) {
+                            IconButton(onClick = performDriveBackup) {
+                                Icon(Icons.Default.CloudUpload, "Drive Backup", tint = MaterialTheme.colorScheme.onSurface)
                             }
-                        }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Logout,
-                                "Google Logout",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )}
+                            IconButton(onClick = { backupLauncher.launch("workout_backup.db") }) {
+                                Icon(Icons.Default.Save, "Local Backup", tint = MaterialTheme.colorScheme.onSurface)
+                            }
+                            IconButton(onClick = { restoreLauncher.launch(arrayOf("*/*")) }) {
+                                Icon(Icons.Default.SettingsBackupRestore, "Restore", tint = MaterialTheme.colorScheme.onSurface)
+                            }
+                            IconButton(onClick = {
+                                googleSignInClient.signOut().addOnCompleteListener {
+                                    Toast.makeText(context, "Google signed out", Toast.LENGTH_SHORT).show()
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                                    contentDescription = "Google Logout",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
                     }
                 )
@@ -463,7 +468,7 @@ fun WorkoutScreen(
                     if (currentSong.title != null) {
                         Surface(
                             color = WidgetColor,
-                            shape =  MaterialTheme.shapes.large,
+                            shape = MaterialTheme.shapes.large,
                             tonalElevation = 1.dp,
                             shadowElevation = 5.dp,
                             modifier = Modifier
@@ -472,8 +477,8 @@ fun WorkoutScreen(
                                 .padding(end = if (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking || currentScreen == Screen.Notes) 16.dp else 0.dp)
                         ) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(0.dp)
                             ) {
                                 IconButton(onClick = { MediaRepository.getInstance().togglePlayPause() }) {
@@ -483,21 +488,26 @@ fun WorkoutScreen(
                                         tint = if (currentSong.isPlaying) primaryColor else Color.Gray
                                     )
                                 }
-                                Column(modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 8.dp)
-                                    .clickable { MediaRepository.getInstance().openApp() }
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 8.dp)
+                                        .clickable { MediaRepository.getInstance().openApp() }
                                 ) {
-                                    Text(currentSong.title ?: "",
+                                    Text(
+                                        text = currentSong.title ?: "",
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        color = Color.White)
+                                        color = Color.White
+                                    )
 
-                                    Text(currentSong.artist ?: "",
+                                    Text(
+                                        text = currentSong.artist ?: "",
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = Color.Gray)
+                                        color = Color.Gray
+                                    )
                                 }
 
                                 Box(
@@ -535,10 +545,10 @@ fun WorkoutScreen(
                         }
                     } else if (currentScreen == Screen.WeightTracking) {
                         FloatingActionButton(
-                        onClick = {
-                            viewModel.prepareNewEntry()
-                            showAddWeightDialog = true
-                        },
+                            onClick = {
+                                viewModel.prepareNewEntry()
+                                showAddWeightDialog = true
+                            },
                             containerColor = primaryColor,
                             contentColor = Color.Black,
                             elevation = FloatingActionButtonDefaults.elevation(4.dp),
@@ -560,35 +570,46 @@ fun WorkoutScreen(
             floatingActionButtonPosition = FabPosition.Center
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
-                when (currentScreen) {
-                    Screen.Workouts -> {
-                        WorkoutListContent(
-                            workouts = workouts,
-                            primaryColor = primaryColor,
-                            onDelete = { workoutToDelete = it },
-                            onEdit = { editingWorkout = it },
-                            onCopy = { copyingWorkout = it }
-                        )
-                    }
-                    Screen.StravaCalendar -> {
-                        StravaCalendarPage(stravaViewModel, primaryColor)
-                    }
-                    Screen.WeightTracking -> {
-                        WeightTrackingPage(bodyWeights, primaryColor,
-                            onWeightClick = { editingWeight = it },
-                            onWeightDelete = { weightToDelete = it }
-                        )
-                    }
-                    Screen.WorkoutStats -> {
-                        WorkoutStatsPage(workouts, primaryColor)
-                    }
-                    Screen.Notes -> {
-                        NotesPage(
-                            notes = notesList,
-                            primaryColor = primaryColor,
-                            onNoteClick = { editingNote = it },
-                            onNoteDelete = { noteToDelete = it }
-                        )
+                AnimatedContent(
+                    targetState = currentScreen,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(300)) togetherWith
+                        fadeOut(animationSpec = tween(300))
+                    },
+                    label = "ScreenTransition"
+                ) { targetScreen ->
+                    when (targetScreen) {
+                        Screen.Workouts -> {
+                            WorkoutListContent(
+                                workouts = workouts,
+                                primaryColor = primaryColor,
+                                onDelete = { workoutToDelete = it },
+                                onEdit = { editingWorkout = it },
+                                onCopy = { copyingWorkout = it }
+                            )
+                        }
+                        Screen.StravaCalendar -> {
+                            StravaCalendarPage(stravaViewModel, primaryColor)
+                        }
+                        Screen.WeightTracking -> {
+                            WeightTrackingPage(
+                                bodyWeights = bodyWeights,
+                                primaryColor = primaryColor,
+                                onWeightClick = { editingWeight = it },
+                                onWeightDelete = { weightToDelete = it }
+                            )
+                        }
+                        Screen.WorkoutStats -> {
+                            WorkoutStatsPage(workouts, primaryColor)
+                        }
+                        Screen.Notes -> {
+                            NotesPage(
+                                notes = notesList,
+                                primaryColor = primaryColor,
+                                onNoteClick = { editingNote = it },
+                                onNoteDelete = { noteToDelete = it }
+                            )
+                        }
                     }
                 }
             }
@@ -773,31 +794,53 @@ fun NotesPage(
         contentPadding = PaddingValues(16.dp)
     ) {
         if (notes.isNotEmpty()) {
-            items(notes) { note ->
+            items(notes, key = { it.id }) { note ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
+                        .animateItem()
                         .clickable { onNoteClick(note) },
                     colors = CardDefaults.cardColors(containerColor = SurfaceColor)
                 ) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(note.date)), color = Color.Gray, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = 4.dp))
+                            Text(
+                                text = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(note.date)),
+                                color = Color.Gray,
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
                             if (note.title.isNotEmpty()) {
-                                Text(note.title, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                                Text(
+                                    text = note.title,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleLarge
+                                )
                             }
-                            Text(note.content, color = Color.LightGray, style = MaterialTheme.typography.bodyLarge, maxLines = 25, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                            Text(
+                                text = note.content,
+                                color = Color.LightGray,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 25,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }
-                        /* IconButton(onClick = { onNoteDelete(note) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray, modifier = Modifier.size(20.dp))
-                        }*/
                     }
                 }
             }
         } else {
             item {
-                Text("Start taking notes to keep track of your progress!", color = Color.Gray, modifier = Modifier.padding(bottom = 24.dp))
+                Text(
+                    text = "Start taking notes to keep track of your progress!",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
             }
         }
         item {
@@ -872,7 +915,7 @@ fun NoteDialog(
                 if (note != null && onDelete != null) {
                     IconButton(onClick = onDelete) {
                         Icon(
-                            Icons.Default.Delete,
+                            imageVector = Icons.Default.Delete,
                             contentDescription = "Delete",
                             tint = MaterialTheme.colorScheme.error
                         )
@@ -890,7 +933,6 @@ fun NoteDialog(
         dismissButton = null
     )
 }
-
 
 @Composable
 fun WeightTrackingPage(
@@ -966,23 +1008,38 @@ fun WeightTrackingPage(
                 Text("History", style = MaterialTheme.typography.labelLarge, color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            items(sortedWeights.reversed()) { weightEntry ->
+            items(sortedWeights.reversed(), key = { it.id }) { weightEntry ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
+                        .animateItem()
                         .clickable { onWeightClick(weightEntry) },
                     colors = CardDefaults.cardColors(containerColor = SurfaceColor)
                 ) {
-                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 8.dp)
+                        ) {
                             Text(SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(weightEntry.date)), color = Color.Gray, style = MaterialTheme.typography.labelMedium)
                             Text("${formatWeight(weightEntry.weight)} kg",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+                                style = MaterialTheme.typography.titleLarge,
+                                modifier = Modifier.padding(top = 6.dp))
                             if (weightEntry.notes.isNotEmpty()) {
-                                Text(weightEntry.notes, color = Color.Gray, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    weightEntry.notes,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
                         }
                         IconButton(onClick = { onWeightDelete(weightEntry) }) {
@@ -998,7 +1055,7 @@ fun WeightTrackingPage(
         }
 
         item {
-            Spacer(modifier = Modifier.height(100.dp))
+            Spacer(modifier = Modifier.height(70.dp))
         }
     }
 }
@@ -1041,8 +1098,15 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                 ) {
                     Text("Total Volume Lifted", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    val animatedWeight by animateFloatAsState(
+                        targetValue = totalWeightLifted.toFloat(),
+                        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+                        label = "TotalWeightAnimation"
+                    )
+
                     Text(
-                        "${String.format(Locale.getDefault(), "%,.0f", totalWeightLifted)} kg",
+                        "${String.format(Locale.getDefault(), "%,.0f", animatedWeight)} kg",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                         color = primaryColor
@@ -1087,8 +1151,16 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
+
+                    val progress = if (totalWeightLifted > 0) (weight / totalWeightLifted).toFloat() else 0f
+                    val animatedProgress by animateFloatAsState(
+                        targetValue = progress,
+                        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+                        label = "ProgressAnimation"
+                    )
+
                     LinearProgressIndicator(
-                        progress = { if (totalWeightLifted > 0) (weight / totalWeightLifted).toFloat() else 0f },
+                        progress = { animatedProgress },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -1118,6 +1190,12 @@ fun WeightChart(weights: List<BodyWeight>, color: Color) {
     val maxDate = weights.last().date
     val dateRange = maxOf(1L, maxDate - minDate)
 
+    // Animation for the path drawing
+    val animationProgress = remember { Animatable(0f) }
+    LaunchedEffect(weights) {
+        animationProgress.animateTo(1f, animationSpec = tween(1500, easing = FastOutSlowInEasing))
+    }
+
     Canvas(modifier = Modifier.fillMaxSize()) {
         val width = size.width
         val height = size.height
@@ -1135,13 +1213,16 @@ fun WeightChart(weights: List<BodyWeight>, color: Color) {
                     lineTo(points[i].x, points[i].y)
                 }
             }
+
+            // Drawing the path with animation
             drawPath(
                 path = path,
                 color = color,
-                style = Stroke(width = 3.dp.toPx())
+                style = Stroke(width = 3.dp.toPx()),
+                alpha = animationProgress.value
             )
 
-            // Draw gradient fill
+            // Draw gradient fill with animation
             val fillPath = Path().apply {
                 addPath(path)
                 lineTo(width, height)
@@ -1151,13 +1232,13 @@ fun WeightChart(weights: List<BodyWeight>, color: Color) {
             drawPath(
                 path = fillPath,
                 brush = Brush.verticalGradient(
-                    colors = listOf(color.copy(alpha = 0.2f), Color.Transparent)
+                    colors = listOf(color.copy(alpha = 0.2f * animationProgress.value), Color.Transparent)
                 )
             )
         }
 
         points.forEach { point ->
-            drawCircle(color = color, radius = 4.dp.toPx(), center = point)
+            drawCircle(color = color, radius = 4.dp.toPx() * animationProgress.value, center = point)
         }
     }
 }
@@ -1256,7 +1337,7 @@ fun WorkoutListContent(
                     color = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
                 ) {
                     Text(
-                        date,
+                        text = date,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
                         color = primaryColor,
@@ -1264,8 +1345,9 @@ fun WorkoutListContent(
                     )
                 }
             }
-            items(workoutsInDay) { workout ->
+            items(workoutsInDay, key = { it.id }) { workout ->
                 WorkoutCard(
+                    modifier = Modifier.animateItem(),
                     workout = workout,
                     primaryColor = primaryColor,
                     onDelete = { onDelete(workout) },
@@ -1325,7 +1407,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = primaryColor, contentColor = Color.Black)
                 ) {
-                    Text("Login with Strava")
+                    Text("Login with Strava", fontSize = 18.sp)
                 }
             }
         } else {
@@ -1346,7 +1428,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             Column(horizontalAlignment = Alignment.Start) {
                                 Text("Streak", color = Color.Gray, fontSize = 10.sp)
-                                Text("$streak Weeks" , fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                                Text("$streak Weeks", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                             }
                             Column(horizontalAlignment = Alignment.Start) {
                                 Text("Total activities", color = Color.Gray, fontSize = 10.sp)
@@ -1414,9 +1496,11 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        Row(modifier = Modifier
-            .fillMaxWidth()
-            .padding(end = 40.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 40.dp)
+        ) {
             listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
                 Text(
                     text = day,
@@ -1431,23 +1515,30 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
         Spacer(modifier = Modifier.height(16.dp))
 
         Box(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 40.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 40.dp)
+            ) {
                 var currentDayIndex = 0
                 val totalSlots = firstDayOfMonth + daysInMonth
                 val rows = (totalSlots + 6) / 7
 
                 for (row in 0 until rows) {
-                    Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    ) {
                         for (col in 0 until 7) {
                             val slotIndex = row * 7 + col
                             if (slotIndex < firstDayOfMonth || currentDayIndex >= daysInMonth) {
-                                Box(modifier = Modifier
-                                    .weight(1f)
-                                    .aspectRatio(1f), contentAlignment = Alignment.Center) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1f),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     val dayNum = if (slotIndex < firstDayOfMonth) {
                                         val prevMonth = month.minusMonths(1)
                                         prevMonth.lengthOfMonth() - (firstDayOfMonth - slotIndex - 1)
@@ -1543,8 +1634,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
 
                                 if (hasActivityLastWeek) {
                                     Box(
-                                        modifier = Modifier
-                                            .size(36.dp),
+                                        modifier = Modifier.size(36.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
@@ -1617,11 +1707,18 @@ private fun getIconForActivity(type: String): ImageVector {
 }
 
 @Composable
-fun WorkoutCard(workout: Workout, primaryColor: Color, onDelete: () -> Unit, onEdit: () -> Unit, onCopy: () -> Unit) {
+fun WorkoutCard(
+    workout: Workout,
+    primaryColor: Color,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit,
+    onCopy: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val accentColor = if (workout.isPersonalBest) PersonalBestGold else primaryColor
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable { onEdit() },
@@ -1641,16 +1738,18 @@ fun WorkoutCard(workout: Workout, primaryColor: Color, onDelete: () -> Unit, onE
                     .width(5.dp)
                     .background(
                         brush = Brush.verticalGradient(
-                            colors = listOf(accentColor, accentColor.copy(alpha = 0.5f))
+                            colors = listOf(accentColor, accentColor.copy(alpha = 0.6f))
                         )
                     )
             )
 
-            Column(modifier = Modifier
-                .weight(1f)
-                .padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp)
+            ) {
                 Text(
-                    workout.exerciseName,
+                    text = workout.exerciseName,
                     style = MaterialTheme.typography.titleLarge,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
@@ -1668,12 +1767,12 @@ fun WorkoutCard(workout: Workout, primaryColor: Color, onDelete: () -> Unit, onE
                     }
                     if (workout.weight > 0) append("@ ${formatWeight(workout.weight)}${workout.weightUnit}")
                 }
-                Text(details, color = Color.LightGray, style = MaterialTheme.typography.bodyLarge)
+                Text(text = details, color = Color.LightGray, style = MaterialTheme.typography.bodyLarge)
 
                 if (workout.notes.isNotBlank()) {
                     Spacer(modifier = Modifier.height(5.dp))
                     Text(
-                        workout.notes,
+                        text = workout.notes,
                         color = Color.LightGray.copy(alpha = 0.8f),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 2,
@@ -1690,7 +1789,7 @@ fun WorkoutCard(workout: Workout, primaryColor: Color, onDelete: () -> Unit, onE
                     modifier = Modifier.padding(start = 8.dp, end = 16.dp)
                 ) {
                     Text(
-                        "PB",
+                        text = "PB",
                         color = PersonalBestGold,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
@@ -1728,10 +1827,11 @@ fun NumericInput(
                 onValueChange(newValue)
             }
         },
-        label = { Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
+        label = { Text(text = label, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
         modifier = modifier,
         keyboardOptions = KeyboardOptions(
-            keyboardType = if (isInteger) KeyboardType.Number else KeyboardType.Decimal),
+            keyboardType = if (isInteger) KeyboardType.Number else KeyboardType.Decimal
+        ),
         singleLine = true,
         textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 14.sp),
         leadingIcon = {
@@ -1746,8 +1846,7 @@ fun NumericInput(
                     },
                     modifier = Modifier.size(24.dp)
                 ) {
-                    Icon(Icons.Default.Remove, contentDescription = "Remove", modifier = Modifier.size(20.dp)
-                    )
+                    Icon(Icons.Default.Remove, contentDescription = "Remove", modifier = Modifier.size(20.dp))
                 }
             }
         },
@@ -1807,7 +1906,10 @@ fun WorkoutDialog(
     }
 
     if (showDatePicker) {
-        DatePickerDialog(onDismissRequest = { showDatePicker = false }, confirmButton = { TextButton(onClick = { showDatePicker = false }) { Text("OK") } }) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = { TextButton(onClick = { showDatePicker = false }) { Text("OK") } }
+        ) {
             DatePicker(state = datePickerState)
         }
     }
