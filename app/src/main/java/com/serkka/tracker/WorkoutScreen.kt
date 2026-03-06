@@ -2,12 +2,10 @@ package com.serkka.tracker
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -37,7 +35,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -59,8 +57,6 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
-import com.serkka.tracker.ui.theme.DarkBackground
-import com.serkka.tracker.ui.theme.OrangePrimary
 import com.serkka.tracker.ui.theme.PersonalBestGold
 import com.serkka.tracker.ui.theme.PBGlow
 import com.serkka.tracker.ui.theme.SurfaceColor
@@ -77,13 +73,16 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.time.temporal.TemporalAdjusters
 import java.util.*
+import kotlin.math.roundToInt
 
 enum class Screen {
     Workouts, StravaCalendar, WeightTracking, WorkoutStats
 }
 
 private fun formatWeight(weight: Float): String {
-    return if (weight % 1 == 0f) weight.toInt().toString() else weight.toString()
+    // Round to 3 decimal places to handle floating-point precision errors (e.g., 72.000001 -> 72.0)
+    val rounded = (weight * 1000f).roundToInt() / 1000f
+    return if (rounded % 1 == 0f) rounded.toInt().toString() else rounded.toString()
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -103,8 +102,10 @@ fun WorkoutScreen(
     val bodyWeights by viewModel.allBodyWeights.collectAsState()
 
     val workoutHistory = remember(workouts) {
-        workouts.sortedWith(compareByDescending<Workout> { it.date }.thenByDescending { it.id })
+        workouts.asSequence()
+            .sortedWith(compareByDescending<Workout> { it.date }.thenByDescending { it.id })
             .distinctBy { it.exerciseName }
+            .toList()
     }
 
     var showAddWorkoutDialog by remember { mutableStateOf(false) }
@@ -322,12 +323,8 @@ fun WorkoutScreen(
                     modifier = Modifier
                         .padding(horizontal = 28.dp)
                         .padding(bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(-8.dp)
+                    verticalArrangement = Arrangement.spacedBy((-8).dp)
                 ) {
-                    val r = (primaryColor.red * 255).toInt()
-                    val g = (primaryColor.green * 255).toInt()
-                    val b = (primaryColor.blue * 255).toInt()
-
                     Slider(
                         value = primaryColor.red,
                         onValueChange = { themeViewModel.updatePrimaryColor(primaryColor.copy(red = it)) },
@@ -508,7 +505,10 @@ fun WorkoutScreen(
                         }
                     } else if (currentScreen == Screen.WeightTracking) {
                         FloatingActionButton(
-                            onClick = { showAddWeightDialog = true },
+                        onClick = {
+                            viewModel.prepareNewEntry()
+                            showAddWeightDialog = true
+                        },
                             containerColor = primaryColor,
                             contentColor = Color.Black,
                             elevation = FloatingActionButtonDefaults.elevation(4.dp),
@@ -559,6 +559,7 @@ fun WorkoutScreen(
 
             if (showAddWeightDialog) {
                 BodyWeightDialog(
+                    initialWeight = viewModel.weightInput,
                     onDismiss = { showAddWeightDialog = false },
                     onConfirm = { weight, dateMillis, notes ->
                         viewModel.addBodyWeight(weight, dateMillis, notes)
@@ -933,10 +934,13 @@ fun WeightChart(weights: List<BodyWeight>, color: Color) {
 @Composable
 fun BodyWeightDialog(
     bodyWeight: BodyWeight? = null,
+    initialWeight: String = "",
     onDismiss: () -> Unit,
     onConfirm: (Float, Long, String) -> Unit
 ) {
-    var weight by remember { mutableStateOf(bodyWeight?.weight?.let { formatWeight(it) } ?: "") }
+    var weight by remember(bodyWeight, initialWeight) {
+        mutableStateOf(bodyWeight?.weight?.let { formatWeight(it) } ?: initialWeight)
+    }
     var notes by remember { mutableStateOf(bodyWeight?.notes ?: "") }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = bodyWeight?.date ?: System.currentTimeMillis())
     var showDatePicker by remember { mutableStateOf(false) }
@@ -1075,7 +1079,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
 
                 Button(
                     onClick = {
-                        val authUri = Uri.parse("https://www.strava.com/oauth/mobile/authorize")
+                        val authUri = "https://www.strava.com/oauth/mobile/authorize".toUri()
                             .buildUpon()
                             .appendQueryParameter("client_id", "206279")
                             .appendQueryParameter("redirect_uri", "tracker-app://localhost")
@@ -1308,11 +1312,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                                 if (hasActivityLastWeek) {
                                     Box(
                                         modifier = Modifier
-                                            .size(36.dp)
-                                            .background(
-                                                primaryColor.copy(alpha = 0f),
-                                                CircleShape
-                                            ),
+                                            .size(36.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
@@ -1487,12 +1487,19 @@ fun NumericInput(
     modifier: Modifier = Modifier,
     step: Float = 1f
 ) {
+    val isInteger = step % 1 == 0f
+
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { newValue ->
+            if (!isInteger || !newValue.contains(".") && !newValue.contains(",")) {
+                onValueChange(newValue)
+            }
+        },
         label = { Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
         modifier = modifier,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (isInteger) KeyboardType.Number else KeyboardType.Decimal),
         singleLine = true,
         textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 14.sp),
         leadingIcon = {
@@ -1501,7 +1508,8 @@ fun NumericInput(
                     onClick = {
                         val current = value.toFloatOrNull() ?: 0f
                         if (current >= step) {
-                            onValueChange(formatWeight(current - step))
+                            val next = if (isInteger) (current.toInt() - step.toInt()).toFloat() else current - step
+                            onValueChange(formatWeight(next))
                         }
                     },
                     modifier = Modifier.size(24.dp)
@@ -1516,7 +1524,8 @@ fun NumericInput(
                 IconButton(
                     onClick = {
                         val current = value.toFloatOrNull() ?: 0f
-                        onValueChange(formatWeight(current + step))
+                        val next = if (isInteger) (current.toInt() + step.toInt()).toFloat() else current + step
+                        onValueChange(formatWeight(next))
                     },
                     modifier = Modifier.size(24.dp)
                 ) {
@@ -1553,13 +1562,15 @@ fun WorkoutDialog(
 
     val suggestions = remember(exercise, history) {
         if (exercise.isEmpty()) {
-            history.map { it.exerciseName }.distinct().take(8)
+            history.asSequence().map { it.exerciseName }.distinct().take(8).toList()
         } else {
-            history.filter { it.exerciseName.contains(exercise, ignoreCase = true) }
+            history.asSequence()
+                .filter { it.exerciseName.contains(exercise, ignoreCase = true) }
                 .map { it.exerciseName }
                 .distinct()
                 .filter { it.lowercase() != exercise.lowercase() }
                 .take(10)
+                .toList()
         }
     }
 

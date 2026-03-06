@@ -6,6 +6,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() {
 
@@ -53,6 +56,19 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
     }
 
     // Body Weight operations
+
+    var weightInput by mutableStateOf("") // The state tied to your TextField
+    fun prepareNewEntry() {
+        weightInput = ""
+        viewModelScope.launch {
+            val lastEntry = repository.getLastWeight()
+            // If a previous entry exists, set the input to that value, else keep it empty
+            weightInput = lastEntry?.weight?.let { w ->
+                if (w % 1 == 0f) w.toInt().toString() else w.toString()
+            } ?: ""
+        }
+    }
+
     fun addBodyWeight(weight: Float, dateMillis: Long, notes: String = "") {
         viewModelScope.launch {
             repository.addBodyWeight(BodyWeight(date = dateMillis, weight = weight, notes = notes))
@@ -70,4 +86,5 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
             repository.deleteBodyWeight(bodyWeight)
         }
     }
+
 }

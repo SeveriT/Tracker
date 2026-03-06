@@ -12,6 +12,9 @@ interface BodyWeightDao {
     @Query("SELECT * FROM body_weights ORDER BY date DESC")
     fun getAllBodyWeights(): Flow<List<BodyWeight>>
 
+    @Query("SELECT * FROM body_weights ORDER BY date DESC LIMIT 1")
+    suspend fun getLastBodyWeight(): BodyWeight?
+
     @Insert
     suspend fun insert(bodyWeight: BodyWeight)
 

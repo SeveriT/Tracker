@@ -34,4 +34,8 @@ class WorkoutRepository(private val workoutDao: WorkoutDao, private val bodyWeig
     suspend fun deleteBodyWeight(bodyWeight: BodyWeight) {
         bodyWeightDao.delete(bodyWeight)
     }
+
+    suspend fun getLastWeight(): BodyWeight? {
+        return bodyWeightDao.getLastBodyWeight()
+    }
 }
