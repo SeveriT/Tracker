@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Workout::class, BodyWeight::class], version = 5, exportSchema = false)
+@Database(entities = [Workout::class, BodyWeight::class, Note::class], version = 6, exportSchema = false)
 abstract class WorkoutDatabase : RoomDatabase() {
     abstract fun workoutDao(): WorkoutDao
     abstract fun bodyWeightDao(): BodyWeightDao
@@ -35,10 +35,23 @@ abstract class WorkoutDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `notes` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `title` TEXT NOT NULL, 
+                        `content` TEXT NOT NULL, 
+                        `date` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): WorkoutDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, WorkoutDatabase::class.java, "workout_db")
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { Instance = it }

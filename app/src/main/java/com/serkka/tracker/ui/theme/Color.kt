@@ -17,10 +17,10 @@ val DarkBlueVariant = Color(0xFF1E1E1E)
 // App specific colors
 val OrangePrimary = Color(0xFFFF6D00) // More vibrant orange
 val DarkBackground = Color(0xFF0A0A0A) // Deep black but not pure
-val SurfaceColor = Color(0xFF0E0E0E) // Slightly darker
+val SurfaceColor = Color(0xFF121212) // Slightly darker
 val WidgetColor = Color(0xFF0C0C0C)
 val PersonalBestGold = Color(0xFFFFD700)
 val PBGlow = Color(0x2FFFD700)
 val MenuItemColor = Color(0xFFDEDEDE)
-val MenuBackgroundColor = Color(0xFF101010)
+val MenuBackgroundColor = Color(0xFF141414)
 

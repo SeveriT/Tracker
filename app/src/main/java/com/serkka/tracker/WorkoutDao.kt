@@ -20,4 +20,17 @@ interface WorkoutDao {
 
     @Delete
     suspend fun deleteWorkout(workout: Workout)
+
+    // Notes
+    @Query("SELECT * FROM notes ORDER BY date DESC")
+    fun getAllNotes(): Flow<List<Note>>
+
+    @Insert
+    suspend fun insertNote(note: Note)
+
+    @Update
+    suspend fun updateNote(note: Note)
+
+    @Delete
+    suspend fun deleteNote(note: Note)
 }

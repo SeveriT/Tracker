@@ -38,4 +38,19 @@ class WorkoutRepository(private val workoutDao: WorkoutDao, private val bodyWeig
     suspend fun getLastWeight(): BodyWeight? {
         return bodyWeightDao.getLastBodyWeight()
     }
+
+    // Note operations
+    fun getAllNotes(): Flow<List<Note>> = workoutDao.getAllNotes()
+
+    suspend fun addNote(note: Note) {
+        workoutDao.insertNote(note)
+    }
+
+    suspend fun updateNote(note: Note) {
+        workoutDao.updateNote(note)
+    }
+
+    suspend fun deleteNote(note: Note) {
+        workoutDao.deleteNote(note)
+    }
 }

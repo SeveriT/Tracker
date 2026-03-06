@@ -2,6 +2,7 @@ package com.serkka.tracker
 
 import android.app.Activity
 import android.content.Intent
+import android.icu.text.ListFormatter
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -76,7 +77,7 @@ import java.util.*
 import kotlin.math.roundToInt
 
 enum class Screen {
-    Workouts, StravaCalendar, WeightTracking, WorkoutStats
+    Workouts, StravaCalendar, WeightTracking, WorkoutStats, Notes
 }
 
 private fun formatWeight(weight: Float): String {
@@ -100,6 +101,7 @@ fun WorkoutScreen(
 
     val workouts by viewModel.allWorkouts.collectAsState()
     val bodyWeights by viewModel.allBodyWeights.collectAsState()
+    val notesList by viewModel.allNotes.collectAsState()
 
     val workoutHistory = remember(workouts) {
         workouts.asSequence()
@@ -110,11 +112,14 @@ fun WorkoutScreen(
 
     var showAddWorkoutDialog by remember { mutableStateOf(false) }
     var showAddWeightDialog by remember { mutableStateOf(false) }
+    var showAddNoteDialog by remember { mutableStateOf(false) }
     var editingWorkout by remember { mutableStateOf<Workout?>(null) }
     var copyingWorkout by remember { mutableStateOf<Workout?>(null) }
     var editingWeight by remember { mutableStateOf<BodyWeight?>(null) }
+    var editingNote by remember { mutableStateOf<Note?>(null) }
     var workoutToDelete by remember { mutableStateOf<Workout?>(null) }
     var weightToDelete by remember { mutableStateOf<BodyWeight?>(null) }
+    var noteToDelete by remember { mutableStateOf<Note?>(null) }
     val currentSong by MediaRepository.getInstance().currentSong.collectAsState()
 
     val primaryColor by themeViewModel.primaryColor.collectAsState()
@@ -307,6 +312,26 @@ fun WorkoutScreen(
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
                         .padding(vertical = 6.dp)
                 )
+                NavigationDrawerItem(
+                    label = { Text("Notes", modifier = Modifier.padding(start = 8.dp)) },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Notes, null) },
+                    selected = currentScreen == Screen.Notes,
+                    onClick = {
+                        currentScreen = Screen.Notes
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = primaryColor.copy(alpha = 0.1f),
+                        unselectedContainerColor = Color.Transparent,
+                        selectedIconColor = primaryColor,
+                        unselectedIconColor = MenuItemColor,
+                        selectedTextColor = primaryColor,
+                        unselectedTextColor = MenuItemColor
+                    ),
+                    modifier = Modifier
+                        .padding(NavigationDrawerItemDefaults.ItemPadding)
+                        .padding(vertical = 6.dp)
+                )
 
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp), color = Color.Gray.copy(alpha = 0.3f))
 
@@ -393,9 +418,10 @@ fun WorkoutScreen(
                     title = {
                         Text(when(currentScreen) {
                             Screen.Workouts -> "Workouts"
-                            Screen.StravaCalendar -> "Strava Training"
+                            Screen.StravaCalendar -> "Strava Calendar"
                             Screen.WeightTracking -> "Weight Tracking"
                             Screen.WorkoutStats -> "Workout Stats"
+                            Screen.Notes -> "Notes"
                         })
                     },
                     navigationIcon = {
@@ -403,7 +429,7 @@ fun WorkoutScreen(
                             Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     },
-                    actions = {
+                    actions = { if (currentScreen == Screen.Workouts || currentScreen == Screen.Notes) {
                         IconButton(onClick = performDriveBackup) {
                             Icon(Icons.Default.CloudUpload, "Drive Backup", tint = MaterialTheme.colorScheme.onSurface)
                         }
@@ -418,7 +444,11 @@ fun WorkoutScreen(
                                 Toast.makeText(context, "Google signed out", Toast.LENGTH_SHORT).show()
                             }
                         }) {
-                            Icon(Icons.AutoMirrored.Filled.Logout, "Google Logout", tint = MaterialTheme.colorScheme.onSurface)
+                            Icon(
+                                Icons.AutoMirrored.Filled.Logout,
+                                "Google Logout",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )}
                         }
                     }
                 )
@@ -427,7 +457,7 @@ fun WorkoutScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = if (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking) 28.dp else 16.dp),
+                        .padding(horizontal = if (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking || currentScreen == Screen.Notes) 28.dp else 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (currentSong.title != null) {
@@ -439,7 +469,7 @@ fun WorkoutScreen(
                             modifier = Modifier
                                 .height(56.dp)
                                 .weight(1f)
-                                .padding(end = if (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking) 16.dp else 0.dp)
+                                .padding(end = if (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking || currentScreen == Screen.Notes) 16.dp else 0.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -515,6 +545,15 @@ fun WorkoutScreen(
                         ) {
                             Icon(Icons.Default.MonitorWeight, "Add Weight")
                         }
+                    } else if (currentScreen == Screen.Notes) {
+                        FloatingActionButton(
+                            onClick = { showAddNoteDialog = true },
+                            containerColor = primaryColor,
+                            contentColor = Color.Black,
+                            elevation = FloatingActionButtonDefaults.elevation(4.dp),
+                        ) {
+                            Icon(Icons.Default.Add, "Add Note")
+                        }
                     }
                 }
             },
@@ -543,6 +582,14 @@ fun WorkoutScreen(
                     Screen.WorkoutStats -> {
                         WorkoutStatsPage(workouts, primaryColor)
                     }
+                    Screen.Notes -> {
+                        NotesPage(
+                            notes = notesList,
+                            primaryColor = primaryColor,
+                            onNoteClick = { editingNote = it },
+                            onNoteDelete = { noteToDelete = it }
+                        )
+                    }
                 }
             }
 
@@ -564,6 +611,16 @@ fun WorkoutScreen(
                     onConfirm = { weight, dateMillis, notes ->
                         viewModel.addBodyWeight(weight, dateMillis, notes)
                         showAddWeightDialog = false
+                    }
+                )
+            }
+
+            if (showAddNoteDialog) {
+                NoteDialog(
+                    onDismiss = { showAddNoteDialog = false },
+                    onConfirm = { title, content, dateMillis ->
+                        viewModel.addNote(title, content, dateMillis)
+                        showAddNoteDialog = false
                     }
                 )
             }
@@ -608,6 +665,21 @@ fun WorkoutScreen(
                     onConfirm = { weight, dateMillis, notes ->
                         viewModel.updateBodyWeight(bodyWeight.copy(weight = weight, date = dateMillis, notes = notes))
                         editingWeight = null
+                    }
+                )
+            }
+
+            editingNote?.let { note ->
+                NoteDialog(
+                    note = note,
+                    onDismiss = { editingNote = null },
+                    onConfirm = { title, content, dateMillis ->
+                        viewModel.updateNote(note.copy(title = title, content = content, date = dateMillis))
+                        editingNote = null
+                    },
+                    onDelete = {
+                        noteToDelete = note
+                        editingNote = null
                     }
                 )
             }
@@ -659,9 +731,166 @@ fun WorkoutScreen(
                     }
                 )
             }
+
+            noteToDelete?.let { note ->
+                AlertDialog(
+                    onDismissRequest = { noteToDelete = null },
+                    properties = DialogProperties(usePlatformDefaultWidth = false),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
+                    title = { Text("Delete Note") },
+                    text = { Text("Are you sure you want to delete this note?") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                viewModel.deleteNote(note)
+                                noteToDelete = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Delete")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { noteToDelete = null }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
         }
     }
 }
+
+@Composable
+fun NotesPage(
+    notes: List<Note>,
+    primaryColor: Color,
+    onNoteClick: (Note) -> Unit,
+    onNoteDelete: (Note) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        if (notes.isNotEmpty()) {
+            items(notes) { note ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .clickable { onNoteClick(note) },
+                    colors = CardDefaults.cardColors(containerColor = SurfaceColor)
+                ) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(note.date)), color = Color.Gray, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = 4.dp))
+                            if (note.title.isNotEmpty()) {
+                                Text(note.title, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                            }
+                            Text(note.content, color = Color.LightGray, style = MaterialTheme.typography.bodyLarge, maxLines = 25, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                        }
+                        /* IconButton(onClick = { onNoteDelete(note) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray, modifier = Modifier.size(20.dp))
+                        }*/
+                    }
+                }
+            }
+        } else {
+            item {
+                Text("Start taking notes to keep track of your progress!", color = Color.Gray, modifier = Modifier.padding(bottom = 24.dp))
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(70.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NoteDialog(
+    note: Note? = null,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, Long) -> Unit,
+    onDelete: (() -> Unit)? = null
+) {
+    var title by remember { mutableStateOf(note?.title ?: "") }
+    var content by remember { mutableStateOf(note?.content ?: "") }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = note?.date ?: System.currentTimeMillis())
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = { TextButton(onClick = { showDatePicker = false }) { Text("OK") } }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        title = { Text(if (note == null) "Add Note" else "Edit Note") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                )
+
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    label = { Text("Content") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 25,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                )
+
+                OutlinedTextField(
+                    value = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(datePickerState.selectedDateMillis ?: System.currentTimeMillis())),
+                    onValueChange = {},
+                    label = { Text("Date") },
+                    readOnly = true,
+                    trailingIcon = { IconButton(onClick = { showDatePicker = true }) { Icon(Icons.Default.DateRange, null) } },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (note != null && onDelete != null) {
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                Button(onClick = {
+                    if (content.isNotEmpty()) {
+                        onConfirm(title, content, datePickerState.selectedDateMillis ?: System.currentTimeMillis())
+                    }
+                }) { Text("Save") }
+            }
+        },
+        dismissButton = null
+    )
+}
+
 
 @Composable
 fun WeightTrackingPage(
@@ -747,10 +976,13 @@ fun WeightTrackingPage(
                 ) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(weightEntry.date)), color = Color.Gray, style = MaterialTheme.typography.labelSmall)
-                            Text("${formatWeight(weightEntry.weight)} kg", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text(SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(weightEntry.date)), color = Color.Gray, style = MaterialTheme.typography.labelMedium)
+                            Text("${formatWeight(weightEntry.weight)} kg",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
                             if (weightEntry.notes.isNotEmpty()) {
-                                Text(weightEntry.notes, color = Color.Gray, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(weightEntry.notes, color = Color.Gray, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
                         IconButton(onClick = { onWeightDelete(weightEntry) }) {

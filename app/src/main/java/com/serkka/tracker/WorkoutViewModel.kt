@@ -27,6 +27,13 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
             initialValue = emptyList()
         )
 
+    val allNotes: StateFlow<List<Note>> = repository.getAllNotes()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     fun addWorkout(exercise: String, sets: Int, reps: Int, weight: Float, dateMillis: Long, isPersonalBest: Boolean, weightUnit: String = "kg", notes: String = "") {
         viewModelScope.launch {
             val newWorkout = Workout(
@@ -84,6 +91,25 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
     fun deleteBodyWeight(bodyWeight: BodyWeight) {
         viewModelScope.launch {
             repository.deleteBodyWeight(bodyWeight)
+        }
+    }
+
+    // Note operations
+    fun addNote(title: String, content: String, dateMillis: Long) {
+        viewModelScope.launch {
+            repository.addNote(Note(title = title, content = content, date = dateMillis))
+        }
+    }
+
+    fun updateNote(note: Note) {
+        viewModelScope.launch {
+            repository.updateNote(note)
+        }
+    }
+
+    fun deleteNote(note: Note) {
+        viewModelScope.launch {
+            repository.deleteNote(note)
         }
     }
 
