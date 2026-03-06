@@ -65,6 +65,8 @@ import com.serkka.tracker.ui.theme.PersonalBestGold
 import com.serkka.tracker.ui.theme.PBGlow
 import com.serkka.tracker.ui.theme.SurfaceColor
 import com.serkka.tracker.ui.theme.WidgetColor
+import com.serkka.tracker.ui.theme.MenuItemColor
+import com.serkka.tracker.ui.theme.MenuBackgroundColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -220,7 +222,7 @@ fun WorkoutScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = DarkBackground,
+                drawerContainerColor = MenuBackgroundColor,
                 drawerContentColor = Color.White
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -236,9 +238,9 @@ fun WorkoutScreen(
                         selectedContainerColor = primaryColor.copy(alpha = 0.1f),
                         unselectedContainerColor = Color.Transparent,
                         selectedIconColor = primaryColor,
-                        unselectedIconColor = Color.White,
+                        unselectedIconColor = MenuItemColor,
                         selectedTextColor = primaryColor,
-                        unselectedTextColor = Color.White
+                        unselectedTextColor = MenuItemColor
                     ),
                     modifier = Modifier
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -256,9 +258,9 @@ fun WorkoutScreen(
                         selectedContainerColor = primaryColor.copy(alpha = 0.1f),
                         unselectedContainerColor = Color.Transparent,
                         selectedIconColor = primaryColor,
-                        unselectedIconColor = Color.White,
+                        unselectedIconColor = MenuItemColor,
                         selectedTextColor = primaryColor,
-                        unselectedTextColor = Color.White
+                        unselectedTextColor = MenuItemColor
                     ),
                     modifier = Modifier
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -276,9 +278,9 @@ fun WorkoutScreen(
                         selectedContainerColor = primaryColor.copy(alpha = 0.1f),
                         unselectedContainerColor = Color.Transparent,
                         selectedIconColor = primaryColor,
-                        unselectedIconColor = Color.White,
+                        unselectedIconColor = MenuItemColor,
                         selectedTextColor = primaryColor,
-                        unselectedTextColor = Color.White
+                        unselectedTextColor = MenuItemColor
                     ),
                     modifier = Modifier
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -296,25 +298,32 @@ fun WorkoutScreen(
                         selectedContainerColor = primaryColor.copy(alpha = 0.1f),
                         unselectedContainerColor = Color.Transparent,
                         selectedIconColor = primaryColor,
-                        unselectedIconColor = Color.White,
+                        unselectedIconColor = MenuItemColor,
                         selectedTextColor = primaryColor,
-                        unselectedTextColor = Color.White
+                        unselectedTextColor = MenuItemColor
                     ),
                     modifier = Modifier
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
                         .padding(vertical = 6.dp)
                 )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray.copy(alpha = 0.3f))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp), color = Color.Gray.copy(alpha = 0.3f))
+
+                Spacer(modifier = Modifier.weight(1f))
 
                 Text(
-                    "Accent Color",
+                    "Accent Color (RGB)",
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp)
+                    color = MenuItemColor,
+                    modifier = Modifier.padding(horizontal = 36.dp, vertical = 8.dp)
                 )
 
-                Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp)) {
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 28.dp)
+                        .padding(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(-8.dp)
+                ) {
                     val r = (primaryColor.red * 255).toInt()
                     val g = (primaryColor.green * 255).toInt()
                     val b = (primaryColor.blue * 255).toInt()
@@ -322,20 +331,18 @@ fun WorkoutScreen(
                     Slider(
                         value = primaryColor.red,
                         onValueChange = { themeViewModel.updatePrimaryColor(primaryColor.copy(red = it)) },
-                        colors = SliderDefaults.colors(thumbColor = Color.Red, activeTrackColor = Color.Red),
+                        colors = SliderDefaults.colors(thumbColor = primaryColor, activeTrackColor = primaryColor),
                         thumb = {
                             SliderDefaults.Thumb(
                                 interactionSource = remember { MutableInteractionSource() },
-                                colors = SliderDefaults.colors(thumbColor = Color.Red, activeTrackColor = Color.Red),
                                 modifier = Modifier.size(16.dp)
                             )
                         },
                         track = { sliderState ->
                             SliderDefaults.Track(
                                 sliderState = sliderState,
-                                colors = SliderDefaults.colors(thumbColor = Color.Red, activeTrackColor = Color.Red),
                                 modifier = Modifier.height(4.dp),
-                                thumbTrackGapSize = 0.dp
+                                thumbTrackGapSize = 4.dp
                             )
                         }
                     )
@@ -343,20 +350,18 @@ fun WorkoutScreen(
                     Slider(
                         value = primaryColor.green,
                         onValueChange = { themeViewModel.updatePrimaryColor(primaryColor.copy(green = it)) },
-                        colors = SliderDefaults.colors(thumbColor = Color.Green, activeTrackColor = Color.Green),
+                        colors = SliderDefaults.colors(thumbColor = primaryColor, activeTrackColor = primaryColor),
                         thumb = {
                             SliderDefaults.Thumb(
                                 interactionSource = remember { MutableInteractionSource() },
-                                colors = SliderDefaults.colors(thumbColor = Color.Green, activeTrackColor = Color.Green),
                                 modifier = Modifier.size(16.dp)
                             )
                         },
                         track = { sliderState ->
                             SliderDefaults.Track(
                                 sliderState = sliderState,
-                                colors = SliderDefaults.colors(thumbColor = Color.Green, activeTrackColor = Color.Green),
                                 modifier = Modifier.height(4.dp),
-                                thumbTrackGapSize = 0.dp
+                                thumbTrackGapSize = 4.dp
                             )
                         }
 
@@ -365,20 +370,18 @@ fun WorkoutScreen(
                     Slider(
                         value = primaryColor.blue,
                         onValueChange = { themeViewModel.updatePrimaryColor(primaryColor.copy(blue = it)) },
-                        colors = SliderDefaults.colors(thumbColor = Color.Blue, activeTrackColor = Color.Blue),
+                        colors = SliderDefaults.colors(thumbColor = primaryColor, activeTrackColor = primaryColor),
                         thumb = {
                             SliderDefaults.Thumb(
                                 interactionSource = remember { MutableInteractionSource() },
-                                colors = SliderDefaults.colors(thumbColor = Color.Blue, activeTrackColor = Color.Blue),
                                 modifier = Modifier.size(16.dp)
                             )
                         },
                         track = { sliderState ->
                             SliderDefaults.Track(
                                 sliderState = sliderState,
-                                colors = SliderDefaults.colors(thumbColor = Color.Blue, activeTrackColor = Color.Blue),
                                 modifier = Modifier.height(4.dp),
-                                thumbTrackGapSize = 0.dp
+                                thumbTrackGapSize = 4.dp
                             )
                         }
                     )
@@ -865,7 +868,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
         }
 
         item {
-            Spacer(modifier = Modifier.height(100.dp))
+            Spacer(modifier = Modifier.height(70.dp))
         }
     }
 }
