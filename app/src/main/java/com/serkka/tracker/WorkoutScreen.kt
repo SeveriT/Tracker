@@ -1126,7 +1126,7 @@ fun WorkoutDialog(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isPB, onCheckedChange = { isPB = it })
-                    Text("Personal Best", style = MaterialTheme.typography.bodyMedium)
+                    Text("Personal Best", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 TextButton(onClick = onDismiss) { Text("Cancel") }
