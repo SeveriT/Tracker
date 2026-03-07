@@ -60,10 +60,6 @@ import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.serkka.tracker.ui.theme.PersonalBestGold
 import com.serkka.tracker.ui.theme.PBGlow
-import com.serkka.tracker.ui.theme.SurfaceColor
-import com.serkka.tracker.ui.theme.WidgetColor
-import com.serkka.tracker.ui.theme.MenuItemColor
-import com.serkka.tracker.ui.theme.MenuBackgroundColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -285,8 +281,8 @@ fun WorkoutScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = MenuBackgroundColor,
-                drawerContentColor = Color.White
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                drawerContentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
                 NavigationDrawerItem(
@@ -301,9 +297,9 @@ fun WorkoutScreen(
                         selectedContainerColor = primaryColor.copy(alpha = 0.1f),
                         unselectedContainerColor = Color.Transparent,
                         selectedIconColor = primaryColor,
-                        unselectedIconColor = MenuItemColor,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         selectedTextColor = primaryColor,
-                        unselectedTextColor = MenuItemColor
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -321,9 +317,9 @@ fun WorkoutScreen(
                         selectedContainerColor = primaryColor.copy(alpha = 0.1f),
                         unselectedContainerColor = Color.Transparent,
                         selectedIconColor = primaryColor,
-                        unselectedIconColor = MenuItemColor,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         selectedTextColor = primaryColor,
-                        unselectedTextColor = MenuItemColor
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -341,9 +337,9 @@ fun WorkoutScreen(
                         selectedContainerColor = primaryColor.copy(alpha = 0.1f),
                         unselectedContainerColor = Color.Transparent,
                         selectedIconColor = primaryColor,
-                        unselectedIconColor = MenuItemColor,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         selectedTextColor = primaryColor,
-                        unselectedTextColor = MenuItemColor
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -361,9 +357,9 @@ fun WorkoutScreen(
                         selectedContainerColor = primaryColor.copy(alpha = 0.1f),
                         unselectedContainerColor = Color.Transparent,
                         selectedIconColor = primaryColor,
-                        unselectedIconColor = MenuItemColor,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         selectedTextColor = primaryColor,
-                        unselectedTextColor = MenuItemColor
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -381,9 +377,9 @@ fun WorkoutScreen(
                         selectedContainerColor = primaryColor.copy(alpha = 0.1f),
                         unselectedContainerColor = Color.Transparent,
                         selectedIconColor = primaryColor,
-                        unselectedIconColor = MenuItemColor,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         selectedTextColor = primaryColor,
-                        unselectedTextColor = MenuItemColor
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -392,7 +388,7 @@ fun WorkoutScreen(
 
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
-                    color = Color.Gray.copy(alpha = 0.3f)
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -400,7 +396,7 @@ fun WorkoutScreen(
                 Text(
                     text = "Accent Color (RGB)",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MenuItemColor,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 36.dp, vertical = 8.dp)
                 )
 
@@ -512,7 +508,14 @@ fun WorkoutScreen(
                                 )
                             }
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        scrolledContainerColor = MaterialTheme.colorScheme.background,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
             },
             floatingActionButton = {
@@ -524,10 +527,10 @@ fun WorkoutScreen(
                 ) {
                     if (currentSong.title != null) {
                         Surface(
-                            color = WidgetColor,
+                            color = MaterialTheme.colorScheme.surface,
                             shape = MaterialTheme.shapes.large,
-                            tonalElevation = 1.dp,
-                            shadowElevation = 5.dp,
+                            tonalElevation = 2.dp,
+                            shadowElevation = 4.dp,
                             modifier = Modifier
                                 .height(56.dp)
                                 .weight(1f)
@@ -542,7 +545,7 @@ fun WorkoutScreen(
                                     Icon(
                                         imageVector = if (currentSong.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                         contentDescription = "Play/Pause",
-                                        tint = if (currentSong.isPlaying) primaryColor else Color.Gray
+                                        tint = if (currentSong.isPlaying) primaryColor else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Column(
@@ -555,7 +558,7 @@ fun WorkoutScreen(
                                         text = currentSong.title ?: "",
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        color = Color.White
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
 
                                     Text(
@@ -563,7 +566,7 @@ fun WorkoutScreen(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = Color.Gray
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 
@@ -855,8 +858,8 @@ fun WorkoutCard(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable { onEdit() },
-        colors = CardDefaults.cardColors(containerColor = SurfaceColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
         Row(
             modifier = Modifier
@@ -884,7 +887,7 @@ fun WorkoutCard(
                 Text(
                     text = workout.exerciseName,
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -900,13 +903,13 @@ fun WorkoutCard(
                     }
                     if (workout.weight > 0) append("@ ${formatWeight(workout.weight)}${workout.weightUnit}")
                 }
-                Text(text = details, color = Color.LightGray, style = MaterialTheme.typography.bodyLarge)
+                Text(text = details, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
 
                 if (workout.notes.isNotBlank()) {
                     Spacer(modifier = Modifier.height(5.dp))
                     Text(
                         text = workout.notes,
-                        color = Color.LightGray.copy(alpha = 0.8f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -933,10 +936,10 @@ fun WorkoutCard(
 
             Row(modifier = Modifier.padding(end = 8.dp)) {
                 IconButton(onClick = onCopy) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.Gray, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -1005,7 +1008,7 @@ fun WorkoutDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (exercise.isEmpty() && history.isNotEmpty()) {
-                    Text("Recent exercises:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text("Recent exercises:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1113,18 +1116,26 @@ fun WorkoutDialog(
                     trailingIcon = { IconButton(onClick = { showDatePicker = true }) { Icon(Icons.Default.DateRange, null) } },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = isPB, onCheckedChange = { isPB = it })
-                    Text("Personal Best")
-                }
             }
         },
         confirmButton = {
-            Button(onClick = {
-                onConfirm(exercise, sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0, weight.toFloatOrNull() ?: 0f, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), isPB, weightUnit, notes)
-            }) { Text("Save") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = isPB, onCheckedChange = { isPB = it })
+                    Text("Personal Best", style = MaterialTheme.typography.bodyMedium)
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                Button(onClick = {
+                    onConfirm(exercise, sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0, weight.toFloatOrNull() ?: 0f, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), isPB, weightUnit, notes)
+                }) { Text("Save") }
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = null
     )
 }
 
@@ -1143,9 +1154,7 @@ fun WorkoutListContent(
     }
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 85.dp)
     ) {
         groupedWorkouts.forEach { (date, workoutsInDay) ->
@@ -1157,7 +1166,7 @@ fun WorkoutListContent(
                     Text(
                         text = date,
                         style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
+                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 24.dp),
                         color = primaryColor,
                         fontWeight = FontWeight.Bold
                     )
@@ -1165,7 +1174,9 @@ fun WorkoutListContent(
             }
             items(workoutsInDay, key = { it.id }) { workout ->
                 WorkoutCard(
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .animateItem(),
                     workout = workout,
                     primaryColor = primaryColor,
                     onDelete = { onDelete(workout) },
@@ -1248,7 +1259,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceColor)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Row(
                         modifier = Modifier
@@ -1259,12 +1270,12 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             Column(horizontalAlignment = Alignment.Start) {
-                                Text("Streak", color = Color.Gray, fontSize = 10.sp)
-                                Text("$streak Weeks", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                                Text("Streak", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                Text("$streak Weeks", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
                             Column(horizontalAlignment = Alignment.Start) {
-                                Text("Total activities", color = Color.Gray, fontSize = 10.sp)
-                                Text("$totalStreakActivities", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                                Text("Total activities", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                Text("$totalStreakActivities", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
 
@@ -1273,7 +1284,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                                 if (isLoading) {
                                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = primaryColor, strokeWidth = 2.dp)
                                 } else {
-                                    Icon(Icons.Default.Refresh, "Refresh", tint = Color.Gray)
+                                    Icon(Icons.Default.Refresh, "Refresh", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                             if (profilePicUrl.isNotEmpty()) {
@@ -1283,12 +1294,12 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                                     modifier = Modifier
                                         .size(32.dp)
                                         .clip(CircleShape)
-                                        .border(1.dp, Color.Gray, CircleShape)
+                                        .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant, CircleShape)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                             }
                             IconButton(onClick = { stravaViewModel.logout() }) {
-                                Icon(Icons.AutoMirrored.Filled.Logout, "Logout", tint = Color.Gray)
+                                Icon(Icons.AutoMirrored.Filled.Logout, "Logout", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -1324,7 +1335,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
             text = "${month.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} $year",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
@@ -1339,7 +1350,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
                     fontSize = 14.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1377,7 +1388,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                                     } else {
                                         slotIndex - (firstDayOfMonth + daysInMonth) + 1
                                     }
-                                    Text(text = dayNum.toString(), color = Color.DarkGray, fontSize = 14.sp)
+                                    Text(text = dayNum.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f), fontSize = 14.sp)
                                 }
                             } else {
                                 currentDayIndex++
@@ -1411,13 +1422,13 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                                                 Box(
                                                     modifier = Modifier
                                                         .size(40.dp)
-                                                        .background(Color.White, CircleShape),
+                                                        .background(MaterialTheme.colorScheme.onSurface, CircleShape),
                                                     contentAlignment = Alignment.Center
                                                 ) {
                                                     Icon(
                                                         getIconForActivity(activitiesOnDay.first()),
                                                         null,
-                                                                tint = Color . Black,
+                                                                tint = MaterialTheme.colorScheme.surface,
                                                         modifier = Modifier.size(24.dp)
                                                     )
                                             }
@@ -1429,10 +1440,10 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                                                 .border(2.dp, primaryColor, CircleShape),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Text(text = day.toString(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            Text(text = day.toString(), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                         }
                                     } else {
-                                        Text(text = day.toString(), color = Color.Gray, fontSize = 14.sp)
+                                        Text(text = day.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                                     }
                                 }
                             }
@@ -1569,7 +1580,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceColor),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
@@ -1578,7 +1589,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Total Volume Lifted", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
+                    Text("Total Volume Lifted", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     val animatedWeight by animateFloatAsState(
@@ -1601,7 +1612,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
             Text(
                 "Breakdown by Exercise",
                 style = MaterialTheme.typography.labelLarge,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
         }
@@ -1611,7 +1622,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceColor)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -1622,7 +1633,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                         Text(
                             exercise,
                             modifier = Modifier.weight(1f),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
@@ -1648,7 +1659,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                             .height(8.dp)
                             .clip(CircleShape),
                         color = primaryColor,
-                        trackColor = Color.Gray.copy(alpha = 0.1f),
+                        trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f),
                     )
                 }
             }
@@ -1696,18 +1707,18 @@ fun WeightTrackingPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceColor),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Column {
-                                Text("Current Weight", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text("Current Weight", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("${formatWeight(sortedWeights.last().weight)} kg", style = MaterialTheme.typography.headlineMedium, color = primaryColor, fontWeight = FontWeight.Bold)
                             }
                             prediction?.let { (_, rate) ->
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("Trend", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                    Text("Trend", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     val sign = if (rate >= 0) "+" else ""
                                     Text("$sign${String.format(Locale.getDefault(), "%.2f", rate)} kg/week", color = if (rate <= 0) Color.Green else Color.Red, fontWeight = FontWeight.Bold)
                                 }
@@ -1716,7 +1727,7 @@ fun WeightTrackingPage(
 
                         prediction?.let { (pred, _) ->
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("30-Day Prediction: ${String.format(Locale.getDefault(), "%.1f", pred)} kg", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
+                            Text("30-Day Prediction: ${String.format(Locale.getDefault(), "%.1f", pred)} kg", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -1732,7 +1743,7 @@ fun WeightTrackingPage(
             }
 
             item {
-                Text("History", style = MaterialTheme.typography.labelLarge, color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
+                Text("History", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
             }
 
             items(sortedWeights.reversed(), key = { it.id }) { weightEntry ->
@@ -1742,7 +1753,7 @@ fun WeightTrackingPage(
                         .padding(vertical = 4.dp)
                         .animateItem()
                         .clickable { onWeightClick(weightEntry) },
-                    colors = CardDefaults.cardColors(containerColor = SurfaceColor)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -1753,9 +1764,9 @@ fun WeightTrackingPage(
                                 .weight(1f)
                                 .padding(start = 8.dp)
                         ) {
-                            Text(SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(weightEntry.date)), color = Color.Gray, style = MaterialTheme.typography.labelMedium)
+                            Text(SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(weightEntry.date)), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
                             Text("${formatWeight(weightEntry.weight)} kg",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleLarge,
                                 modifier = Modifier.padding(top = 6.dp))
@@ -1763,21 +1774,21 @@ fun WeightTrackingPage(
                                 Text(
                                     weightEntry.notes,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         }
                         IconButton(onClick = { onWeightDelete(weightEntry) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                         }
                     }
                 }
             }
         } else {
             item {
-                Text("Add your first weight entry to see progress!", color = Color.Gray, modifier = Modifier.padding(bottom = 24.dp))
+                Text("Add your first weight entry to see progress!", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 24.dp))
             }
         }
 
@@ -1941,7 +1952,7 @@ fun NotesPage(
                         .padding(vertical = 4.dp)
                         .animateItem()
                         .clickable { onNoteClick(note) },
-                    colors = CardDefaults.cardColors(containerColor = SurfaceColor)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -1950,21 +1961,21 @@ fun NotesPage(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(note.date)),
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelLarge,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
                             if (note.title.isNotEmpty()) {
                                 Text(
                                     text = note.title,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.titleLarge
                                 )
                             }
                             Text(
                                 text = note.content,
-                                color = Color.LightGray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyLarge,
                                 maxLines = 25,
                                 overflow = TextOverflow.Ellipsis,
@@ -1978,7 +1989,7 @@ fun NotesPage(
             item {
                 Text(
                     text = "Start taking notes to keep track of your progress!",
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
             }
@@ -2073,4 +2084,3 @@ fun NoteDialog(
         dismissButton = null
     )
 }
-

@@ -13,18 +13,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
+    primary = OrangePrimary,
     secondary = PurpleGrey80,
     tertiary = Pink80,
-    surfaceVariant = DarkBlueVariant,
     background = DarkBackground,
-    surface = DarkBackground
+    surface = DarkSurfaceColor,
+    surfaceTint = Color.Transparent, // Prevent tonal elevation tinting
+    onPrimary = Color.Black,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onBackground = Color.White,
+    onSurface = Color.White,
+    surfaceVariant = DarkBlueVariant
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
+    primary = OrangePrimary,
     secondary = PurpleGrey40,
     tertiary = Pink40,
+    background = LightBackground, 
+    surface = LightSurfaceColor,
+    surfaceTint = Color.Transparent, // Prevent tonal elevation tinting
+    onPrimary = Color.White,
+    onSecondary = Color.Black,
+    onTertiary = Color.Black,
+    onBackground = Color.Black,
+    onSurface = Color.Black,
     surfaceVariant = LightBlueVariant
 )
 
@@ -32,7 +46,7 @@ private val LightColorScheme = lightColorScheme(
 fun GymTrackerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
-    primaryColor: Color = OrangePrimary, // Default color
+    primaryColor: Color = OrangePrimary,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
