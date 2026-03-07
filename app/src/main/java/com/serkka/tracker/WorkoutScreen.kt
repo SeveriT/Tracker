@@ -86,6 +86,63 @@ private fun formatWeight(weight: Float): String {
     return if (rounded % 1 == 0f) rounded.toInt().toString() else rounded.toString()
 }
 
+@Composable
+fun NumericInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    step: Float = 1f
+) {
+    val isInteger = step % 1 == 0f
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = { newValue ->
+            if (!isInteger || !newValue.contains(".") && !newValue.contains(",")) {
+                onValueChange(newValue)
+            }
+        },
+        label = { Text(text = label, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
+        modifier = modifier,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (isInteger) KeyboardType.Number else KeyboardType.Decimal
+        ),
+        singleLine = true,
+        textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 14.sp),
+        leadingIcon = {
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                IconButton(
+                    onClick = {
+                        val current = value.toFloatOrNull() ?: 0f
+                        if (current >= step) {
+                            val next = if (isInteger) (current.toInt() - step.toInt()).toFloat() else current - step
+                            onValueChange(formatWeight(next))
+                        }
+                    },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(Icons.Default.Remove, contentDescription = "Remove", modifier = Modifier.size(20.dp))
+                }
+            }
+        },
+        trailingIcon = {
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                IconButton(
+                    onClick = {
+                        val current = value.toFloatOrNull() ?: 0f
+                        val next = if (isInteger) (current.toInt() + step.toInt()).toFloat() else current + step
+                        onValueChange(formatWeight(next))
+                    },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutScreen(
@@ -783,84 +840,148 @@ fun WorkoutScreen(
 }
 
 @Composable
-fun NotesPage(
-    notes: List<Note>,
+fun WorkoutCard(
+    workout: Workout,
     primaryColor: Color,
-    onNoteClick: (Note) -> Unit,
-    onNoteDelete: (Note) -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit,
+    onCopy: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
+    val accentColor = if (workout.isPersonalBest) PersonalBestGold else primaryColor
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onEdit() },
+        colors = CardDefaults.cardColors(containerColor = SurfaceColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        if (notes.isNotEmpty()) {
-            items(notes, key = { it.id }) { note ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .animateItem()
-                        .clickable { onNoteClick(note) },
-                    colors = CardDefaults.cardColors(containerColor = SurfaceColor)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(note.date)),
-                                color = Color.Gray,
-                                style = MaterialTheme.typography.labelLarge,
-                                modifier = Modifier.padding(bottom = 4.dp)
-                            )
-                            if (note.title.isNotEmpty()) {
-                                Text(
-                                    text = note.title,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleLarge
-                                )
-                            }
-                            Text(
-                                text = note.content,
-                                color = Color.LightGray,
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 25,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Accent Bar
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(5.dp)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(accentColor, accentColor.copy(alpha = 0.6f))
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = workout.exerciseName,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(5.dp))
+
+                val details = buildString {
+                    if (workout.sets > 0) append("${workout.sets} sets ")
+                    if (workout.reps > 0) {
+                        if (workout.sets > 0) append("x ")
+                        append("${workout.reps} reps ")
                     }
+                    if (workout.weight > 0) append("@ ${formatWeight(workout.weight)}${workout.weightUnit}")
+                }
+                Text(text = details, color = Color.LightGray, style = MaterialTheme.typography.bodyLarge)
+
+                if (workout.notes.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Text(
+                        text = workout.notes,
+                        color = Color.LightGray.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
                 }
             }
-        } else {
-            item {
-                Text(
-                    text = "Start taking notes to keep track of your progress!",
-                    color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
+
+            if (workout.isPersonalBest) {
+                Surface(
+                    color = PBGlow,
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.padding(start = 8.dp, end = 16.dp)
+                ) {
+                    Text(
+                        text = "PB",
+                        color = PersonalBestGold,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                    )
+                }
             }
-        }
-        item {
-            Spacer(modifier = Modifier.height(70.dp))
+
+            Row(modifier = Modifier.padding(end = 8.dp)) {
+                IconButton(onClick = onCopy) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.Gray, modifier = Modifier.size(20.dp))
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+                }
+            }
         }
     }
 }
 
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteDialog(
-    note: Note? = null,
+fun WorkoutDialog(
+    workout: Workout? = null,
+    history: List<Workout> = emptyList(),
     onDismiss: () -> Unit,
-    onConfirm: (String, String, Long) -> Unit,
-    onDelete: (() -> Unit)? = null
+    onConfirm: (String, Int, Int, Float, Long, Boolean, String, String) -> Unit
 ) {
-    var title by remember { mutableStateOf(note?.title ?: "") }
-    var content by remember { mutableStateOf(note?.content ?: "") }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = note?.date ?: System.currentTimeMillis())
+    var exercise by remember { mutableStateOf(workout?.exerciseName ?: "") }
+    var expanded by remember { mutableStateOf(false) }
+
+    var sets by remember { mutableStateOf(workout?.sets?.toString() ?: "") }
+    var reps by remember { mutableStateOf(workout?.reps?.toString() ?: "") }
+    var weight by remember { mutableStateOf(workout?.weight?.let { formatWeight(it) } ?: "") }
+    val weightUnit = "kg"
+    var notes by remember { mutableStateOf(workout?.notes ?: "") }
+    var isPB by remember { mutableStateOf(workout?.isPersonalBest ?: false) }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = workout?.date ?: System.currentTimeMillis())
     var showDatePicker by remember { mutableStateOf(false) }
+
+    val lastPerformance = remember(exercise, history) {
+        history.find { it.exerciseName.equals(exercise, ignoreCase = true) }
+    }
+
+    val suggestions = remember(exercise, history) {
+        if (exercise.isEmpty()) {
+            history.asSequence().map { it.exerciseName }.distinct().take(8).toList()
+        } else {
+            history.asSequence()
+                .filter { it.exerciseName.contains(exercise, ignoreCase = true) }
+                .map { it.exerciseName }
+                .distinct()
+                .filter { it.lowercase() != exercise.lowercase() }
+                .take(10)
+                .toList()
+        }
+    }
 
     if (showDatePicker) {
         DatePickerDialog(
@@ -874,410 +995,105 @@ fun NoteDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        title = { Text(if (note == null) "Add Note" else "Edit Note") },
+        modifier = Modifier
+            .fillMaxSize()
+            .wrapContentSize(Alignment.BottomCenter)
+            .padding(24.dp)
+            .padding(bottom = 42.dp)
+            .fillMaxWidth(),
+        title = { Text(if (workout == null) "Add Workout" else "Edit Workout") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Title") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
-                )
-
-                OutlinedTextField(
-                    value = content,
-                    onValueChange = { content = it },
-                    label = { Text("Content") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    maxLines = 25,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
-                )
-
-                OutlinedTextField(
-                    value = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(datePickerState.selectedDateMillis ?: System.currentTimeMillis())),
-                    onValueChange = {},
-                    label = { Text("Date") },
-                    readOnly = true,
-                    trailingIcon = { IconButton(onClick = { showDatePicker = true }) { Icon(Icons.Default.DateRange, null) } },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (note != null && onDelete != null) {
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-                Button(onClick = {
-                    if (content.isNotEmpty()) {
-                        onConfirm(title, content, datePickerState.selectedDateMillis ?: System.currentTimeMillis())
-                    }
-                }) { Text("Save") }
-            }
-        },
-        dismissButton = null
-    )
-}
-
-@Composable
-fun WeightTrackingPage(
-    bodyWeights: List<BodyWeight>,
-    primaryColor: Color,
-    onWeightClick: (BodyWeight) -> Unit,
-    onWeightDelete: (BodyWeight) -> Unit
-) {
-    val sortedWeights = remember(bodyWeights) { bodyWeights.sortedBy { it.date } }
-
-    val prediction = remember(sortedWeights) {
-        if (sortedWeights.size < 2) null
-        else {
-            val last = sortedWeights.last()
-            val first = sortedWeights.first()
-            val daysDiff = (last.date - first.date) / (1000 * 60 * 60 * 24).toDouble()
-            if (daysDiff < 1) null
-            else {
-                val weightDiff = last.weight - first.weight
-                val ratePerDay = weightDiff / daysDiff
-                val predictedWeight = last.weight + (ratePerDay * 30)
-                Pair(predictedWeight, ratePerDay * 7) // (Weight in 30 days, Change per week)
-            }
-        }
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        if (sortedWeights.isNotEmpty()) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceColor),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column {
-                                Text("Current Weight", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                                Text("${formatWeight(sortedWeights.last().weight)} kg", style = MaterialTheme.typography.headlineMedium, color = primaryColor, fontWeight = FontWeight.Bold)
-                            }
-                            prediction?.let { (_, rate) ->
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text("Trend", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                                    val sign = if (rate >= 0) "+" else ""
-                                    Text("$sign${String.format(Locale.getDefault(), "%.2f", rate)} kg/week", color = if (rate <= 0) Color.Green else Color.Red, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-
-                        prediction?.let { (pred, _) ->
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("30-Day Prediction: ${String.format(Locale.getDefault(), "%.1f", pred)} kg", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .padding(vertical = 8.dp)) {
-                            WeightChart(weights = sortedWeights, color = primaryColor)
-                        }
-                    }
-                }
-            }
-
-            item {
-                Text("History", style = MaterialTheme.typography.labelLarge, color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            items(sortedWeights.reversed(), key = { it.id }) { weightEntry ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .animateItem()
-                        .clickable { onWeightClick(weightEntry) },
-                    colors = CardDefaults.cardColors(containerColor = SurfaceColor)
-                ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (exercise.isEmpty() && history.isNotEmpty()) {
+                    Text("Recent exercises:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                     Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(start = 8.dp)
-                        ) {
-                            Text(SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(weightEntry.date)), color = Color.Gray, style = MaterialTheme.typography.labelMedium)
-                            Text("${formatWeight(weightEntry.weight)} kg",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleLarge,
-                                modifier = Modifier.padding(top = 6.dp))
-                            if (weightEntry.notes.isNotEmpty()) {
-                                Text(
-                                    weightEntry.notes,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                        IconButton(onClick = { onWeightDelete(weightEntry) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                }
-            }
-        } else {
-            item {
-                Text("Add your first weight entry to see progress!", color = Color.Gray, modifier = Modifier.padding(bottom = 24.dp))
-            }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(70.dp))
-        }
-    }
-}
-
-@Composable
-fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
-    val workoutStats = remember(workouts) {
-        workouts.filter { it.weightUnit == "kg" }
-            .groupBy { it.exerciseName }
-            .mapValues { entry ->
-                entry.value.sumOf {
-                    val s = if (it.sets > 0) it.sets.toLong() else 1L
-                    val r = if (it.reps > 0) it.reps.toLong() else 1L
-                    s * r * it.weight.toDouble()
-                }
-            }
-            .toList()
-            .sortedByDescending { it.second }
-    }
-
-    val totalWeightLifted = workoutStats.sumOf { it.second }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceColor),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(24.dp)
-                        .fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("Total Volume Lifted", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    val animatedWeight by animateFloatAsState(
-                        targetValue = totalWeightLifted.toFloat(),
-                        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
-                        label = "TotalWeightAnimation"
-                    )
-
-                    Text(
-                        "${String.format(Locale.getDefault(), "%,.0f", animatedWeight)} kg",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = primaryColor
-                    )
-                }
-            }
-        }
-
-        item {
-            Text(
-                "Breakdown by Exercise",
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        items(workoutStats) { (exercise, weight) ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceColor)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            exercise,
-                            modifier = Modifier.weight(1f),
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            "${String.format(Locale.getDefault(), "%,.0f", weight)} kg",
-                            fontWeight = FontWeight.Bold,
-                            color = primaryColor,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    val progress = if (totalWeightLifted > 0) (weight / totalWeightLifted).toFloat() else 0f
-                    val animatedProgress by animateFloatAsState(
-                        targetValue = progress,
-                        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
-                        label = "ProgressAnimation"
-                    )
-
-                    LinearProgressIndicator(
-                        progress = { animatedProgress },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(CircleShape),
-                        color = primaryColor,
-                        trackColor = Color.Gray.copy(alpha = 0.1f),
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        history.take(8).forEach { recent ->
+                            AssistChip(
+                                onClick = {
+                                    exercise = recent.exerciseName
+                                    sets = recent.sets.toString()
+                                    reps = recent.reps.toString()
+                                    weight = formatWeight(recent.weight)
+                                },
+                                label = { Text(recent.exerciseName) }
+                            )
+                        }
+                    }
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded && suggestions.isNotEmpty(),
+                    onExpandedChange = { expanded = it },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = exercise,
+                        onValueChange = {
+                            exercise = it
+                            expanded = true
+                        },
+                        label = { Text("Exercise") },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryEditable)
+                            .fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded && suggestions.isNotEmpty(),
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        suggestions.forEach { suggestion ->
+                            DropdownMenuItem(
+                                text = { Text(suggestion) },
+                                onClick = {
+                                    exercise = suggestion
+                                    history.find { it.exerciseName == suggestion }?.let { recent ->
+                                        sets = recent.sets.toString()
+                                        reps = recent.reps.toString()
+                                        weight = formatWeight(recent.weight)
+                                    }
+                                    expanded = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
+                        }
+                    }
+                }
+
+                lastPerformance?.let { last ->
+                    Text(
+                        text = "Last time: ${last.sets}x${last.reps} @ ${formatWeight(last.weight)}${last.weightUnit}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .padding(bottom = 4.dp)
+                            .clickable {
+                                sets = last.sets.toString()
+                                reps = last.reps.toString()
+                                weight = formatWeight(last.weight)
+                            }
                     )
                 }
-            }
-        }
 
-        item {
-            Spacer(modifier = Modifier.height(70.dp))
-        }
-    }
-}
-
-@Composable
-fun WeightChart(weights: List<BodyWeight>, color: Color) {
-    if (weights.isEmpty()) return
-
-    val minWeight = weights.minOf { it.weight } - 1f
-    val maxWeight = weights.maxOf { it.weight } + 1f
-    val weightRange = maxOf(1f, maxWeight - minWeight)
-
-    val minDate = weights.first().date
-    val maxDate = weights.last().date
-    val dateRange = maxOf(1L, maxDate - minDate)
-
-    // Animation for the path drawing
-    val animationProgress = remember { Animatable(0f) }
-    LaunchedEffect(weights) {
-        animationProgress.animateTo(1f, animationSpec = tween(1500, easing = FastOutSlowInEasing))
-    }
-
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val width = size.width
-        val height = size.height
-
-        val points = weights.map { weight ->
-            val x = if (dateRange == 0L) width / 2 else ((weight.date - minDate).toFloat() / dateRange.toFloat()) * width
-            val y = height - ((weight.weight - minWeight) / weightRange) * height
-            Offset(x, y)
-        }
-
-        if (points.size > 1) {
-            val path = Path().apply {
-                moveTo(points.first().x, points.first().y)
-                for (i in 1 until points.size) {
-                    lineTo(points[i].x, points[i].y)
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    NumericInput(value = sets, onValueChange = { sets = it }, label = "Sets", modifier = Modifier.weight(1f))
+                    NumericInput(value = reps, onValueChange = { reps = it }, label = "Reps", modifier = Modifier.weight(1f))
                 }
-            }
 
-            // Drawing the path with animation
-            drawPath(
-                path = path,
-                color = color,
-                style = Stroke(width = 3.dp.toPx()),
-                alpha = animationProgress.value
-            )
-
-            // Draw gradient fill with animation
-            val fillPath = Path().apply {
-                addPath(path)
-                lineTo(width, height)
-                lineTo(0f, height)
-                close()
-            }
-            drawPath(
-                path = fillPath,
-                brush = Brush.verticalGradient(
-                    colors = listOf(color.copy(alpha = 0.2f * animationProgress.value), Color.Transparent)
-                )
-            )
-        }
-
-        points.forEach { point ->
-            drawCircle(color = color, radius = 4.dp.toPx() * animationProgress.value, center = point)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun BodyWeightDialog(
-    bodyWeight: BodyWeight? = null,
-    initialWeight: String = "",
-    onDismiss: () -> Unit,
-    onConfirm: (Float, Long, String) -> Unit
-) {
-    var weight by remember(bodyWeight, initialWeight) {
-        mutableStateOf(bodyWeight?.weight?.let { formatWeight(it) } ?: initialWeight)
-    }
-    var notes by remember { mutableStateOf(bodyWeight?.notes ?: "") }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = bodyWeight?.date ?: System.currentTimeMillis())
-    var showDatePicker by remember { mutableStateOf(false) }
-
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = { TextButton(onClick = { showDatePicker = false }) { Text("OK") } }
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (bodyWeight == null) "Add Weight" else "Edit Weight") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 NumericInput(
                     value = weight,
                     onValueChange = { weight = it },
                     label = "Weight (kg)",
                     modifier = Modifier.fillMaxWidth(),
-                    step = 0.1f
+                    step = 2.5f
                 )
 
                 OutlinedTextField(
@@ -1285,31 +1101,33 @@ fun BodyWeightDialog(
                     onValueChange = { notes = it },
                     label = { Text("Notes") },
                     modifier = Modifier.fillMaxWidth(),
-                    maxLines = 2,
+                    maxLines = 3,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
                 )
 
                 OutlinedTextField(
-                    value = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(datePickerState.selectedDateMillis ?: System.currentTimeMillis())),
+                    value = SimpleDateFormat("EEEE d.M.yy", Locale.getDefault()).format(Date(datePickerState.selectedDateMillis ?: System.currentTimeMillis())),
                     onValueChange = {},
                     label = { Text("Date") },
                     readOnly = true,
                     trailingIcon = { IconButton(onClick = { showDatePicker = true }) { Icon(Icons.Default.DateRange, null) } },
                     modifier = Modifier.fillMaxWidth()
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = isPB, onCheckedChange = { isPB = it })
+                    Text("Personal Best")
+                }
             }
         },
         confirmButton = {
             Button(onClick = {
-                val w = weight.toFloatOrNull() ?: 0f
-                if (w > 0) {
-                    onConfirm(w, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), notes)
-                }
+                onConfirm(exercise, sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0, weight.toFloatOrNull() ?: 0f, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), isPB, weightUnit, notes)
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -1358,6 +1176,20 @@ fun WorkoutListContent(
         }
     }
 }
+
+private fun getIconForActivity(type: String): ImageVector {
+    return when (type) {
+        "WeightTraining" -> Icons.Default.FitnessCenter
+        "Run" -> Icons.AutoMirrored.Filled.DirectionsRun
+        "Ride" -> Icons.AutoMirrored.Filled.DirectionsBike
+        "Swim" -> Icons.Default.Waves
+        "Walk" -> Icons.AutoMirrored.Filled.DirectionsWalk
+        "Yoga" -> Icons.Default.SelfImprovement
+        "Hike" -> Icons.Default.Terrain
+        else -> Icons.Default.Star
+    }
+}
+
 
 @Composable
 fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
@@ -1561,18 +1393,34 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (activitiesOnDay.isNotEmpty()) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .background(Color.White, CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = getIconForActivity(activitiesOnDay.first()),
-                                                contentDescription = null,
-                                                tint = Color.Black,
-                                                modifier = Modifier.size(24.dp)
-                                            )
+                                        if (isToday) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .background(primaryColor, CircleShape),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    getIconForActivity(activitiesOnDay.first()),
+                                                    null,
+                                                    tint = Color.Black,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+                                        }    else  {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(40.dp)
+                                                        .background(Color.White, CircleShape),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        getIconForActivity(activitiesOnDay.first()),
+                                                        null,
+                                                                tint = Color . Black,
+                                                        modifier = Modifier.size(24.dp)
+                                                    )
+                                            }
                                         }
                                     } else if (isToday) {
                                         Box(
@@ -1693,217 +1541,466 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
     }
 }
 
-private fun getIconForActivity(type: String): ImageVector {
-    return when (type) {
-        "WeightTraining" -> Icons.Default.FitnessCenter
-        "Run" -> Icons.AutoMirrored.Filled.DirectionsRun
-        "Ride" -> Icons.AutoMirrored.Filled.DirectionsBike
-        "Swim" -> Icons.Default.Waves
-        "Walk" -> Icons.AutoMirrored.Filled.DirectionsWalk
-        "Yoga" -> Icons.Default.SelfImprovement
-        "Hike" -> Icons.Default.Terrain
-        else -> Icons.Default.Star
+
+@Composable
+fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
+    val workoutStats = remember(workouts) {
+        workouts.filter { it.weightUnit == "kg" }
+            .groupBy { it.exerciseName }
+            .mapValues { entry ->
+                entry.value.sumOf {
+                    val s = if (it.sets > 0) it.sets.toLong() else 1L
+                    val r = if (it.reps > 0) it.reps.toLong() else 1L
+                    s * r * it.weight.toDouble()
+                }
+            }
+            .toList()
+            .sortedByDescending { it.second }
+    }
+
+    val totalWeightLifted = workoutStats.sumOf { it.second }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Total Volume Lifted", style = MaterialTheme.typography.titleMedium, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val animatedWeight by animateFloatAsState(
+                        targetValue = totalWeightLifted.toFloat(),
+                        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+                        label = "TotalWeightAnimation"
+                    )
+
+                    Text(
+                        "${String.format(Locale.getDefault(), "%,.0f", animatedWeight)} kg",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = primaryColor
+                    )
+                }
+            }
+        }
+
+        item {
+            Text(
+                "Breakdown by Exercise",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        items(workoutStats) { (exercise, weight) ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceColor)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            exercise,
+                            modifier = Modifier.weight(1f),
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            "${String.format(Locale.getDefault(), "%,.0f", weight)} kg",
+                            fontWeight = FontWeight.Bold,
+                            color = primaryColor,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val progress = if (totalWeightLifted > 0) (weight / totalWeightLifted).toFloat() else 0f
+                    val animatedProgress by animateFloatAsState(
+                        targetValue = progress,
+                        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+                        label = "ProgressAnimation"
+                    )
+
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(CircleShape),
+                        color = primaryColor,
+                        trackColor = Color.Gray.copy(alpha = 0.1f),
+                    )
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(70.dp))
+        }
+    }
+}
+
+
+@Composable
+fun WeightTrackingPage(
+    bodyWeights: List<BodyWeight>,
+    primaryColor: Color,
+    onWeightClick: (BodyWeight) -> Unit,
+    onWeightDelete: (BodyWeight) -> Unit
+) {
+    val sortedWeights = remember(bodyWeights) { bodyWeights.sortedBy { it.date } }
+
+    val prediction = remember(sortedWeights) {
+        if (sortedWeights.size < 2) null
+        else {
+            val last = sortedWeights.last()
+            val first = sortedWeights.first()
+            val daysDiff = (last.date - first.date) / (1000 * 60 * 60 * 24).toDouble()
+            if (daysDiff < 1) null
+            else {
+                val weightDiff = last.weight - first.weight
+                val ratePerDay = weightDiff / daysDiff
+                val predictedWeight = last.weight + (ratePerDay * 30)
+                Pair(predictedWeight, ratePerDay * 7) // (Weight in 30 days, Change per week)
+            }
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        if (sortedWeights.isNotEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceColor),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column {
+                                Text("Current Weight", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text("${formatWeight(sortedWeights.last().weight)} kg", style = MaterialTheme.typography.headlineMedium, color = primaryColor, fontWeight = FontWeight.Bold)
+                            }
+                            prediction?.let { (_, rate) ->
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("Trend", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                    val sign = if (rate >= 0) "+" else ""
+                                    Text("$sign${String.format(Locale.getDefault(), "%.2f", rate)} kg/week", color = if (rate <= 0) Color.Green else Color.Red, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        prediction?.let { (pred, _) ->
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("30-Day Prediction: ${String.format(Locale.getDefault(), "%.1f", pred)} kg", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Box(modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .padding(vertical = 8.dp)) {
+                            WeightChart(weights = sortedWeights, color = primaryColor)
+                        }
+                    }
+                }
+            }
+
+            item {
+                Text("History", style = MaterialTheme.typography.labelLarge, color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
+            }
+
+            items(sortedWeights.reversed(), key = { it.id }) { weightEntry ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .animateItem()
+                        .clickable { onWeightClick(weightEntry) },
+                    colors = CardDefaults.cardColors(containerColor = SurfaceColor)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 8.dp)
+                        ) {
+                            Text(SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(weightEntry.date)), color = Color.Gray, style = MaterialTheme.typography.labelMedium)
+                            Text("${formatWeight(weightEntry.weight)} kg",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleLarge,
+                                modifier = Modifier.padding(top = 6.dp))
+                            if (weightEntry.notes.isNotEmpty()) {
+                                Text(
+                                    weightEntry.notes,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        IconButton(onClick = { onWeightDelete(weightEntry) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+            }
+        } else {
+            item {
+                Text("Add your first weight entry to see progress!", color = Color.Gray, modifier = Modifier.padding(bottom = 24.dp))
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(70.dp))
+        }
     }
 }
 
 @Composable
-fun WorkoutCard(
-    workout: Workout,
-    primaryColor: Color,
-    onDelete: () -> Unit,
-    onEdit: () -> Unit,
-    onCopy: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val accentColor = if (workout.isPersonalBest) PersonalBestGold else primaryColor
+fun WeightChart(weights: List<BodyWeight>, color: Color) {
+    if (weights.isEmpty()) return
 
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable { onEdit() },
-        colors = CardDefaults.cardColors(containerColor = SurfaceColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Accent Bar
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(5.dp)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(accentColor, accentColor.copy(alpha = 0.6f))
-                        )
-                    )
+    val minWeight = weights.minOf { it.weight } - 1f
+    val maxWeight = weights.maxOf { it.weight } + 1f
+    val weightRange = maxOf(1f, maxWeight - minWeight)
+
+    val minDate = weights.first().date
+    val maxDate = weights.last().date
+    val dateRange = maxOf(1L, maxDate - minDate)
+
+    // Animation for the path drawing
+    val animationProgress = remember { Animatable(0f) }
+    LaunchedEffect(weights) {
+        animationProgress.animateTo(1f, animationSpec = tween(1500, easing = FastOutSlowInEasing))
+    }
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val width = size.width
+        val height = size.height
+
+        val points = weights.map { weight ->
+            val x = if (dateRange == 0L) width / 2 else ((weight.date - minDate).toFloat() / dateRange.toFloat()) * width
+            val y = height - ((weight.weight - minWeight) / weightRange) * height
+            Offset(x, y)
+        }
+
+        if (points.size > 1) {
+            val path = Path().apply {
+                moveTo(points.first().x, points.first().y)
+                for (i in 1 until points.size) {
+                    lineTo(points[i].x, points[i].y)
+                }
+            }
+
+            // Drawing the path with animation
+            drawPath(
+                path = path,
+                color = color,
+                style = Stroke(width = 3.dp.toPx()),
+                alpha = animationProgress.value
             )
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = workout.exerciseName,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            // Draw gradient fill with animation
+            val fillPath = Path().apply {
+                addPath(path)
+                lineTo(width, height)
+                lineTo(0f, height)
+                close()
+            }
+            drawPath(
+                path = fillPath,
+                brush = Brush.verticalGradient(
+                    colors = listOf(color.copy(alpha = 0.2f * animationProgress.value), Color.Transparent)
                 )
+            )
+        }
 
-                Spacer(modifier = Modifier.height(5.dp))
-
-                val details = buildString {
-                    if (workout.sets > 0) append("${workout.sets} sets ")
-                    if (workout.reps > 0) {
-                        if (workout.sets > 0) append("x ")
-                        append("${workout.reps} reps ")
-                    }
-                    if (workout.weight > 0) append("@ ${formatWeight(workout.weight)}${workout.weightUnit}")
-                }
-                Text(text = details, color = Color.LightGray, style = MaterialTheme.typography.bodyLarge)
-
-                if (workout.notes.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Text(
-                        text = workout.notes,
-                        color = Color.LightGray.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                    )
-                }
-            }
-
-            if (workout.isPersonalBest) {
-                Surface(
-                    color = PBGlow,
-                    shape = RoundedCornerShape(4.dp),
-                    modifier = Modifier.padding(start = 8.dp, end = 16.dp)
-                ) {
-                    Text(
-                        text = "PB",
-                        color = PersonalBestGold,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
-                }
-            }
-
-            Row(modifier = Modifier.padding(end = 8.dp)) {
-                IconButton(onClick = onCopy) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.Gray, modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
-                }
-            }
+        points.forEach { point ->
+            drawCircle(color = color, radius = 4.dp.toPx() * animationProgress.value, center = point)
         }
     }
-}
-
-@Composable
-fun NumericInput(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    step: Float = 1f
-) {
-    val isInteger = step % 1 == 0f
-
-    OutlinedTextField(
-        value = value,
-        onValueChange = { newValue ->
-            if (!isInteger || !newValue.contains(".") && !newValue.contains(",")) {
-                onValueChange(newValue)
-            }
-        },
-        label = { Text(text = label, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
-        modifier = modifier,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = if (isInteger) KeyboardType.Number else KeyboardType.Decimal
-        ),
-        singleLine = true,
-        textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 14.sp),
-        leadingIcon = {
-            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-                IconButton(
-                    onClick = {
-                        val current = value.toFloatOrNull() ?: 0f
-                        if (current >= step) {
-                            val next = if (isInteger) (current.toInt() - step.toInt()).toFloat() else current - step
-                            onValueChange(formatWeight(next))
-                        }
-                    },
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(Icons.Default.Remove, contentDescription = "Remove", modifier = Modifier.size(20.dp))
-                }
-            }
-        },
-        trailingIcon = {
-            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-                IconButton(
-                    onClick = {
-                        val current = value.toFloatOrNull() ?: 0f
-                        val next = if (isInteger) (current.toInt() + step.toInt()).toFloat() else current + step
-                        onValueChange(formatWeight(next))
-                    },
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(16.dp))
-                }
-            }
-        }
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkoutDialog(
-    workout: Workout? = null,
-    history: List<Workout> = emptyList(),
+fun BodyWeightDialog(
+    bodyWeight: BodyWeight? = null,
+    initialWeight: String = "",
     onDismiss: () -> Unit,
-    onConfirm: (String, Int, Int, Float, Long, Boolean, String, String) -> Unit
+    onConfirm: (Float, Long, String) -> Unit
 ) {
-    var exercise by remember { mutableStateOf(workout?.exerciseName ?: "") }
-    var expanded by remember { mutableStateOf(false) }
-
-    var sets by remember { mutableStateOf(workout?.sets?.toString() ?: "") }
-    var reps by remember { mutableStateOf(workout?.reps?.toString() ?: "") }
-    var weight by remember { mutableStateOf(workout?.weight?.let { formatWeight(it) } ?: "") }
-    val weightUnit = "kg"
-    var notes by remember { mutableStateOf(workout?.notes ?: "") }
-    var isPB by remember { mutableStateOf(workout?.isPersonalBest ?: false) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = workout?.date ?: System.currentTimeMillis())
+    var weight by remember(bodyWeight, initialWeight) {
+        mutableStateOf(bodyWeight?.weight?.let { formatWeight(it) } ?: initialWeight)
+    }
+    var notes by remember { mutableStateOf(bodyWeight?.notes ?: "") }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = bodyWeight?.date ?: System.currentTimeMillis())
     var showDatePicker by remember { mutableStateOf(false) }
 
-    val lastPerformance = remember(exercise, history) {
-        history.find { it.exerciseName.equals(exercise, ignoreCase = true) }
-    }
-
-    val suggestions = remember(exercise, history) {
-        if (exercise.isEmpty()) {
-            history.asSequence().map { it.exerciseName }.distinct().take(8).toList()
-        } else {
-            history.asSequence()
-                .filter { it.exerciseName.contains(exercise, ignoreCase = true) }
-                .map { it.exerciseName }
-                .distinct()
-                .filter { it.lowercase() != exercise.lowercase() }
-                .take(10)
-                .toList()
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = { TextButton(onClick = { showDatePicker = false }) { Text("OK") } }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (bodyWeight == null) "Add Weight" else "Edit Weight") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                NumericInput(
+                    value = weight,
+                    onValueChange = { weight = it },
+                    label = "Weight (kg)",
+                    modifier = Modifier.fillMaxWidth(),
+                    step = 0.1f
+                )
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notes") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 2,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                )
+
+                OutlinedTextField(
+                    value = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(datePickerState.selectedDateMillis ?: System.currentTimeMillis())),
+                    onValueChange = {},
+                    label = { Text("Date") },
+                    readOnly = true,
+                    trailingIcon = { IconButton(onClick = { showDatePicker = true }) { Icon(Icons.Default.DateRange, null) } },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val w = weight.toFloatOrNull() ?: 0f
+                if (w > 0) {
+                    onConfirm(w, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), notes)
+                }
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+
+
+@Composable
+fun NotesPage(
+    notes: List<Note>,
+    primaryColor: Color,
+    onNoteClick: (Note) -> Unit,
+    onNoteDelete: (Note) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        if (notes.isNotEmpty()) {
+            items(notes, key = { it.id }) { note ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .animateItem()
+                        .clickable { onNoteClick(note) },
+                    colors = CardDefaults.cardColors(containerColor = SurfaceColor)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(note.date)),
+                                color = Color.Gray,
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            if (note.title.isNotEmpty()) {
+                                Text(
+                                    text = note.title,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            }
+                            Text(
+                                text = note.content,
+                                color = Color.LightGray,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 25,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            item {
+                Text(
+                    text = "Start taking notes to keep track of your progress!",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(70.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NoteDialog(
+    note: Note? = null,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, Long) -> Unit,
+    onDelete: (() -> Unit)? = null
+) {
+    var title by remember { mutableStateOf(note?.title ?: "") }
+    var content by remember { mutableStateOf(note?.content ?: "") }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = note?.date ?: System.currentTimeMillis())
+    var showDatePicker by remember { mutableStateOf(false) }
 
     if (showDatePicker) {
         DatePickerDialog(
@@ -1917,135 +2014,63 @@ fun WorkoutDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier
-            .fillMaxSize()
-            .wrapContentSize(Alignment.BottomCenter)
-            .padding(24.dp)
-            .padding(bottom = 42.dp)
-            .fillMaxWidth(),
-        title = { Text(if (workout == null) "Add Workout" else "Edit Workout") },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        title = { Text(if (note == null) "Add Note" else "Edit Note") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (exercise.isEmpty() && history.isNotEmpty()) {
-                    Text("Recent exercises:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        history.take(8).forEach { recent ->
-                            AssistChip(
-                                onClick = {
-                                    exercise = recent.exerciseName
-                                    sets = recent.sets.toString()
-                                    reps = recent.reps.toString()
-                                    weight = formatWeight(recent.weight)
-                                },
-                                label = { Text(recent.exerciseName) }
-                            )
-                        }
-                    }
-                }
-
-                ExposedDropdownMenuBox(
-                    expanded = expanded && suggestions.isNotEmpty(),
-                    onExpandedChange = { expanded = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = exercise,
-                        onValueChange = {
-                            exercise = it
-                            expanded = true
-                        },
-                        label = { Text("Exercise") },
-                        modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryEditable)
-                            .fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = expanded && suggestions.isNotEmpty(),
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        suggestions.forEach { suggestion ->
-                            DropdownMenuItem(
-                                text = { Text(suggestion) },
-                                onClick = {
-                                    exercise = suggestion
-                                    history.find { it.exerciseName == suggestion }?.let { recent ->
-                                        sets = recent.sets.toString()
-                                        reps = recent.reps.toString()
-                                        weight = formatWeight(recent.weight)
-                                    }
-                                    expanded = false
-                                },
-                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                            )
-                        }
-                    }
-                }
-
-                lastPerformance?.let { last ->
-                    Text(
-                        text = "Last time: ${last.sets}x${last.reps} @ ${formatWeight(last.weight)}${last.weightUnit}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .padding(bottom = 4.dp)
-                            .clickable {
-                                sets = last.sets.toString()
-                                reps = last.reps.toString()
-                                weight = formatWeight(last.weight)
-                            }
-                    )
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    NumericInput(value = sets, onValueChange = { sets = it }, label = "Sets", modifier = Modifier.weight(1f))
-                    NumericInput(value = reps, onValueChange = { reps = it }, label = "Reps", modifier = Modifier.weight(1f))
-                }
-
-                NumericInput(
-                    value = weight,
-                    onValueChange = { weight = it },
-                    label = "Weight (kg)",
-                    modifier = Modifier.fillMaxWidth(),
-                    step = 2.5f
-                )
-
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Notes") },
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
                     modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
                 )
 
                 OutlinedTextField(
-                    value = SimpleDateFormat("EEEE d.M.yy", Locale.getDefault()).format(Date(datePickerState.selectedDateMillis ?: System.currentTimeMillis())),
+                    value = content,
+                    onValueChange = { content = it },
+                    label = { Text("Content") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 25,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                )
+
+                OutlinedTextField(
+                    value = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(datePickerState.selectedDateMillis ?: System.currentTimeMillis())),
                     onValueChange = {},
                     label = { Text("Date") },
                     readOnly = true,
                     trailingIcon = { IconButton(onClick = { showDatePicker = true }) { Icon(Icons.Default.DateRange, null) } },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = isPB, onCheckedChange = { isPB = it })
-                    Text("Personal Best")
-                }
             }
         },
         confirmButton = {
-            Button(onClick = {
-                onConfirm(exercise, sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0, weight.toFloatOrNull() ?: 0f, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), isPB, weightUnit, notes)
-            }) { Text("Save") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (note != null && onDelete != null) {
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                Button(onClick = {
+                    if (content.isNotEmpty()) {
+                        onConfirm(title, content, datePickerState.selectedDateMillis ?: System.currentTimeMillis())
+                    }
+                }) { Text("Save") }
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = null
     )
 }
+
