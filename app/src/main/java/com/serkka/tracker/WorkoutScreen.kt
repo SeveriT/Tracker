@@ -19,6 +19,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -702,6 +703,14 @@ fun WorkoutScreen(
                             notes = notes
                         ))
                         editingWorkout = null
+                    },
+                    onDelete = {
+                        workoutToDelete = workout
+                        editingWorkout = null
+                    },
+                    onCopy = {
+                        copyingWorkout = workout
+                        editingWorkout = null
                     }
                 )
             }
@@ -1009,6 +1018,7 @@ fun SummaryPage(
                                 fontWeight = FontWeight.Bold,
                                 color = primaryColor
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(lastWeight.date)),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -1338,6 +1348,7 @@ fun WorkoutCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight()
                 .height(IntrinsicSize.Min),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1345,7 +1356,7 @@ fun WorkoutCard(
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(5.dp)
+                    .width(4.dp)
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(accentColor, accentColor.copy(alpha = 0.6f))
@@ -1356,18 +1367,18 @@ fun WorkoutCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(16.dp)
+                    .padding(12.dp)
             ) {
                 Text(
                     text = workout.exerciseName,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(5.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 val details = buildString {
                     if (workout.sets > 0) append("${workout.sets} sets ")
@@ -1377,10 +1388,10 @@ fun WorkoutCard(
                     }
                     if (workout.weight > 0) append("@ ${formatWeight(workout.weight)}${workout.weightUnit}")
                 }
-                Text(text = details, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                Text(text = details, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
 
                 if (workout.notes.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(5.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = workout.notes,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
@@ -1389,31 +1400,6 @@ fun WorkoutCard(
                         overflow = TextOverflow.Ellipsis,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
-                }
-            }
-
-            if (workout.isPersonalBest) {
-                Surface(
-                    color = PBGlow,
-                    shape = RoundedCornerShape(4.dp),
-                    modifier = Modifier.padding(start = 8.dp, end = 16.dp)
-                ) {
-                    Text(
-                        text = "PB",
-                        color = PersonalBestGold,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
-                }
-            }
-
-            Row(modifier = Modifier.padding(end = 8.dp)) {
-                IconButton(onClick = onCopy) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -1426,7 +1412,9 @@ fun WorkoutDialog(
     workout: Workout? = null,
     history: List<Workout> = emptyList(),
     onDismiss: () -> Unit,
-    onConfirm: (String, Int, Int, Float, Long, Boolean, String, String) -> Unit
+    onConfirm: (String, Int, Int, Float, Long, Boolean, String, String) -> Unit,
+    onDelete: (() -> Unit)? = null,
+    onCopy: (() -> Unit)? = null
 ) {
     var exercise by remember { mutableStateOf(workout?.exerciseName ?: "") }
     var expanded by remember { mutableStateOf(false) }
@@ -1558,18 +1546,40 @@ fun WorkoutDialog(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NumericInput(value = sets, onValueChange = { sets = it }, label = "Sets", modifier = Modifier.weight(1f))
                     NumericInput(value = reps, onValueChange = { reps = it }, label = "Reps", modifier = Modifier.weight(1f))
                 }
 
-                NumericInput(
-                    value = weight,
-                    onValueChange = { weight = it },
-                    label = "Weight (kg)",
-                    modifier = Modifier.fillMaxWidth(),
-                    step = 2.5f
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    NumericInput(
+                        value = weight,
+                        onValueChange = { weight = it },
+                        label = "Weight (kg)",
+                        modifier = Modifier.weight(0.5f),
+                        step = 2.5f
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier =
+                            Modifier.padding(top = 4.dp, end = 16.dp)
+                                    .weight(0.5f)
+                    ) {
+                        Checkbox(
+                            checked = isPB,
+                            onCheckedChange = { isPB = it },
+                        )
+                        Text(
+                            "Personal Best",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
 
                 OutlinedTextField(
                     value = notes,
@@ -1596,15 +1606,49 @@ fun WorkoutDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = isPB, onCheckedChange = { isPB = it })
-                    Text("Personal Best", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Delete and Copy buttons (only when editing)
+                if (onDelete != null || onCopy != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        onCopy?.let {
+                            IconButton(onClick = it) {
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    contentDescription = "Copy",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        onDelete?.let {
+                            IconButton(onClick = it) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
                 }
-                Spacer(modifier = Modifier.weight(1f))
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-                Button(onClick = {
-                    onConfirm(exercise, sets.toIntOrNull() ?: 0, reps.toIntOrNull() ?: 0, weight.LeadFloatOrNull() ?: 0f, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), isPB, weightUnit, notes)
-                }) { Text("Save") }
+
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Button(onClick = {
+                        onConfirm(
+                            exercise,
+                            sets.toIntOrNull() ?: 0,
+                            reps.toIntOrNull() ?: 0,
+                            weight.LeadFloatOrNull() ?: 0f,
+                            datePickerState.selectedDateMillis ?: System.currentTimeMillis(),
+                            isPB,
+                            weightUnit,
+                            notes
+                        )
+                    }) { Text("Save") }
+                }
             }
         },
         dismissButton = null
@@ -1643,17 +1687,35 @@ fun WorkoutListContent(
                     )
                 }
             }
-            items(workoutsInDay, key = { it.id }) { workout ->
-                WorkoutCard(
+            
+            // Display workouts in 2-column grid
+            items(workoutsInDay.chunked(2), key = { pair -> pair.first().id }) { workoutPair ->
+                Row(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .animateItem(),
-                    workout = workout,
-                    primaryColor = primaryColor,
-                    onDelete = { onDelete(workout) },
-                    onEdit = { onEdit(workout) },
-                    onCopy = { onCopy(workout) }
-                )
+                        .height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    workoutPair.forEach { workout ->
+                        WorkoutCard(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .animateItem(),
+                            workout = workout,
+                            primaryColor = primaryColor,
+                            onDelete = { onDelete(workout) },
+                            onEdit = { onEdit(workout) },
+                            onCopy = { onCopy(workout) }
+                        )
+                    }
+                    
+                    // If odd number of workouts, add spacer for alignment
+//                    if (workoutPair.size == 1) {
+//                       Spacer(modifier = Modifier.weight(1f))
+//                    }
+                }
             }
         }
     }
