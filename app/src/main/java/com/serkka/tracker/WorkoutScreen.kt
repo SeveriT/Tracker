@@ -463,9 +463,6 @@ fun WorkoutScreen(
                             Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     },
-                    actions = {
-                        // Buttons moved to Data Management page
-                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
                         scrolledContainerColor = MaterialTheme.colorScheme.background,
@@ -479,7 +476,7 @@ fun WorkoutScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = if (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking || currentScreen == Screen.Notes || currentScreen == Screen.Summary) 28.dp else 16.dp),
+                        .padding(horizontal = if (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking || currentScreen == Screen.Notes || currentScreen == Screen.Summary) 20.dp else 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (currentSong.title != null) {
@@ -635,7 +632,8 @@ fun WorkoutScreen(
                                 primaryColor = primaryColor,
                                 onWorkoutEdit = { editingWorkout = it },
                                 onWorkoutDelete = { workoutToDelete = it },
-                                onWorkoutCopy = { copyingWorkout = it }
+                                onWorkoutCopy = { copyingWorkout = it },
+                                onNavigateToWeightTracking = { currentScreen = Screen.WeightTracking }
                             )
                         }
                         Screen.Settings -> {
@@ -831,7 +829,8 @@ fun SummaryPage(
     primaryColor: Color,
     onWorkoutEdit: (Workout) -> Unit,
     onWorkoutDelete: (Workout) -> Unit,
-    onWorkoutCopy: (Workout) -> Unit
+    onWorkoutCopy: (Workout) -> Unit,
+    onNavigateToWeightTracking: () -> Unit
 ) {
     val activities by stravaViewModel.activities.collectAsState()
     val isLoading by stravaViewModel.isLoading.collectAsState()
@@ -882,6 +881,15 @@ fun SummaryPage(
             val dateString = String.format(Locale.getDefault(), "%04d-%02d-%02d", date.year, date.monthValue, date.dayOfMonth)
             val hasStrava = activityData.containsKey(dateString)
             date to hasStrava
+        }
+    }
+
+    val recentActivities = remember(activities) {
+        val twoDaysAgo = today.minusDays(6)
+        
+        activities.filter { activity ->
+            val activityDate = LocalDate.parse(activity.startDate.substringBefore("T"))
+            !activityDate.isBefore(twoDaysAgo) && !activityDate.isAfter(today)
         }
     }
 
@@ -962,23 +970,179 @@ fun SummaryPage(
                     color = primaryColor,
                     fontWeight = FontWeight.Bold
                 )
+                
+                // Get last 7 days of weight data
+                val weekWeights = remember(bodyWeights) {
+                    val today = LocalDate.now()
+                    val twoDaysAgo = today.minusDays(13)
+                    
+                    bodyWeights
+                        .filter { 
+                            val weightDate = Instant.ofEpochMilli(it.date)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                            !weightDate.isBefore(twoDaysAgo) && !weightDate.isAfter(today)
+                        }
+                        .sortedBy { it.date }
+                }
+                
                 Card(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .clickable { onNavigateToWeightTracking() },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "${formatWeight(lastWeight.weight)} kg",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = primaryColor
-                        )
-                        Text(
-                            text = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(lastWeight.date)),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Left side - Weight info and trend
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "${formatWeight(lastWeight.weight)} kg",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = primaryColor
+                            )
+                            Text(
+                                text = SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(lastWeight.date)),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        
+                        // Right side - Mini graph with background
+                        if (weekWeights.size >= 2) {
+                            val surfaceColor = MaterialTheme.colorScheme.surface
+                            val trend = weekWeights.last().weight - weekWeights.first().weight
+                            
+                            Box(
+                                modifier = Modifier
+                                    .width(150.dp)
+                                    .height(85.dp)
+                                    .background(
+                                        color = primaryColor.copy(alpha = 0.05f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(8.dp)
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val weights = weekWeights.map { it.weight }
+                                    val minWeight = weights.minOrNull() ?: 0f
+                                    val maxWeight = weights.maxOrNull() ?: 100f
+                                    val range = (maxWeight - minWeight).coerceAtLeast(1f)
+                                    
+                                    val graphWidth = size.width
+                                    val graphHeight = size.height
+                                    val spacing = graphWidth / (weights.size - 1).coerceAtLeast(1)
+                                    
+                                    // Draw gradient fill under the line
+                                    val fillPath = Path()
+                                    weights.forEachIndexed { index, weight ->
+                                        val x = index * spacing
+                                        val y = graphHeight - ((weight - minWeight) / range * graphHeight)
+                                        
+                                        if (index == 0) {
+                                            fillPath.moveTo(x, graphHeight)
+                                            fillPath.lineTo(x, y)
+                                        } else {
+                                            fillPath.lineTo(x, y)
+                                        }
+                                    }
+                                    fillPath.lineTo(graphWidth, graphHeight)
+                                    fillPath.close()
+                                    
+                                    drawPath(
+                                        path = fillPath,
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                primaryColor.copy(alpha = 0.4f),
+                                                Color.Transparent
+                                            )
+                                        )
+                                    )
+                                    
+                                    // Draw line path
+                                    val linePath = Path()
+                                    weights.forEachIndexed { index, weight ->
+                                        val x = index * spacing
+                                        val y = graphHeight - ((weight - minWeight) / range * graphHeight)
+                                        
+                                        if (index == 0) {
+                                            linePath.moveTo(x, y)
+                                        } else {
+                                            linePath.lineTo(x, y)
+                                        }
+                                    }
+                                    
+                                    // Draw the line
+                                    drawPath(
+                                        path = linePath,
+                                        color = primaryColor,
+                                        style = Stroke(width = 2.5.dp.toPx())
+                                    )
+                                    
+                                    // Draw points
+                                    weights.forEachIndexed { index, weight ->
+                                        val x = index * spacing
+                                        val y = graphHeight - ((weight - minWeight) / range * graphHeight)
+                                        
+                                        // Outer circle (white background)
+                                        drawCircle(
+                                            color = surfaceColor,
+                                            radius = 4.dp.toPx(),
+                                            center = Offset(x, y)
+                                        )
+                                        // Inner circle (primary color) drawCircle(color = color, radius = 4.dp.toPx() * animationProgress.value, center = point)
+                                        drawCircle(
+                                            color = primaryColor,
+                                            radius = 3.dp.toPx(),
+                                            center = Offset(x, y)
+                                        )
+                                    }
+                                }
+                                
+                                // Trend indicator overlay at top left
+                                Row(
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .background(
+                                            color = when {
+                                                trend > 0.1f -> Color(0xFFDE4A4A).copy(alpha = 0.8f)
+                                                trend < -0.1f -> Color(0xFF46CE46).copy(alpha = 0.8f)
+                                                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                            },
+                                            shape = RoundedCornerShape(6.dp)
+                                        )
+                                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = when {
+                                            trend > 0.1f -> Icons.Default.TrendingUp
+                                            trend < -0.1f -> Icons.Default.TrendingDown
+                                            else -> Icons.Default.TrendingFlat
+                                        },
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = "${if (trend > 0) "+" else ""}${formatWeight(trend)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -986,7 +1150,7 @@ fun SummaryPage(
 
         item {
             Text(
-                "Last Strava Activity",
+                "Strava Activities (Last 7 Days)",
                 style = MaterialTheme.typography.titleMedium,
                 color = primaryColor,
                 fontWeight = FontWeight.Bold
@@ -999,58 +1163,120 @@ fun SummaryPage(
                     CircularProgressIndicator(color = primaryColor)
                 }
             }
-        } else if (lastActivity != null) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
+        } else {
+            if (recentActivities.isEmpty()) {
+                item {
+                    Text(
+                        "No Strava activities in the past 7 days. Link your account in the Strava Calendar page.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                // Display activities in 2-column grid
+                items(recentActivities.chunked(2)) { activityPair ->
                     Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(primaryColor.copy(alpha = 0.1f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                getIconForActivity(lastActivity.type),
-                                contentDescription = null,
-                                tint = primaryColor,
-                                modifier = Modifier.size(28.dp)
-                            )
+                        activityPair.forEach { activity ->
+                            Card(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(100.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .background(primaryColor.copy(alpha = 0.1f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                getIconForActivity(activity.type),
+                                                contentDescription = null,
+                                                tint = primaryColor,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = activity.name,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = activity.type,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Straighten,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(14.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                            )
+                                            Text(
+                                                text = "${String.format(Locale.getDefault(), "%.2f", activity.distance / 1000f)} km",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Schedule,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(14.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                            )
+                                            Text(
+                                                text = run {
+                                                    val totalMinutes = activity.movingTime / 60
+                                                    when {
+                                                        totalMinutes < 60 -> "$totalMinutes min"
+                                                        totalMinutes % 60 == 0 -> "${totalMinutes / 60} h"
+                                                        else -> "${totalMinutes / 60} h ${totalMinutes % 60} min"
+                                                    }
+                                                },
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
-                        Column {
-                            Text(
-                                text = lastActivity.name,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "${lastActivity.type} • ${String.format(Locale.getDefault(), "%.2f", lastActivity.distance / 1000f)} km • ${lastActivity.movingTime / 60} min",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = lastActivity.startDate.substringBefore("T"),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
+                        
+                        // If odd number of activities, add spacer for alignment
+                        if (activityPair.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
-            }
-        } else {
-            item {
-                Text(
-                    "No Strava activities found. Link your account in the Strava Calendar page.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
 
@@ -1085,7 +1311,7 @@ fun SummaryPage(
         }
 
         item {
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(70.dp))
         }
     }
 }
@@ -1462,7 +1688,6 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
 //    LaunchedEffect(Unit) {
 //        stravaViewModel.checkAndFetchActivities()
 //    }
-//
 
     LaunchedEffect(error) {
         error?.let {
@@ -1509,18 +1734,18 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                 ) {
                     Row(
                         modifier = Modifier
-                            .padding(16.dp)
+                            .padding(14.dp)
                             .fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                             Column(horizontalAlignment = Alignment.Start) {
-                                Text("Streak", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                Text("Streak", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                                 Text("$streak Weeks", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
                             Column(horizontalAlignment = Alignment.Start) {
-                                Text("Total activities", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                Text("Total activities", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                                 Text("$totalStreakActivities", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
@@ -1533,19 +1758,18 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                                     Icon(Icons.Default.Refresh, "Refresh", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
+
+                            Spacer(modifier = Modifier.width(4.dp))
+
                             if (profilePicUrl.isNotEmpty()) {
                                 AsyncImage(
                                     model = profilePicUrl,
                                     contentDescription = "Profile Picture",
                                     modifier = Modifier
-                                        .size(32.dp)
+                                        .size(42.dp)
                                         .clip(CircleShape)
                                         .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant, CircleShape)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                            }
-                            IconButton(onClick = { stravaViewModel.logout() }) {
-                                Icon(Icons.AutoMirrored.Filled.Logout, "Logout", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -1716,7 +1940,7 @@ fun StravaCalendar(month: YearMonth, activityData: Map<String, List<String>>, pr
                     repeat(rows) { rowIndex ->
                         Box(
                             modifier = Modifier
-                                .height(56.dp)
+                                .height(55.dp)
                                 .width(36.dp),
                             contentAlignment = Alignment.Center
                         ) {
