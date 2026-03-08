@@ -1041,6 +1041,12 @@ fun SummaryPage(
                                     )
                                     .padding(8.dp)
                             ) {
+
+                                // Animation for the path drawing
+                                val animationProgress = remember { Animatable(0f) }
+                                LaunchedEffect(Unit) {
+                                    animationProgress.animateTo(1f, animationSpec = tween(500, easing = FastOutSlowInEasing))
+                                }
                                 Canvas(modifier = Modifier.fillMaxSize()) {
                                     val weights = weekWeights.map { it.weight }
                                     val minWeight = weights.minOrNull() ?: 0f
@@ -1070,10 +1076,7 @@ fun SummaryPage(
                                     drawPath(
                                         path = fillPath,
                                         brush = Brush.verticalGradient(
-                                            colors = listOf(
-                                                primaryColor.copy(alpha = 0.4f),
-                                                Color.Transparent
-                                            )
+                                            colors = listOf(primaryColor.copy(alpha = 0.2f * animationProgress.value), Color.Transparent)
                                         )
                                     )
                                     
@@ -1094,24 +1097,25 @@ fun SummaryPage(
                                     drawPath(
                                         path = linePath,
                                         color = primaryColor,
-                                        style = Stroke(width = 2.5.dp.toPx())
+                                        style = Stroke(width = 2.5.dp.toPx()),
+                                        alpha = animationProgress.value
                                     )
-                                    
-                                    // Draw points
+
+                                    // Draw points with animation
                                     weights.forEachIndexed { index, weight ->
                                         val x = index * spacing
                                         val y = graphHeight - ((weight - minWeight) / range * graphHeight)
                                         
-                                        // Outer circle (white background)
+                                        // Outer circle (white background) - animated
                                         drawCircle(
                                             color = surfaceColor,
-                                            radius = 4.dp.toPx(),
+                                            radius = 4.dp.toPx() * animationProgress.value,
                                             center = Offset(x, y)
                                         )
-                                        // Inner circle (primary color) drawCircle(color = color, radius = 4.dp.toPx() * animationProgress.value, center = point)
+                                        // Inner circle (primary color) - animated
                                         drawCircle(
                                             color = primaryColor,
-                                            radius = 3.dp.toPx(),
+                                            radius = 3.dp.toPx() * animationProgress.value,
                                             center = Offset(x, y)
                                         )
                                     }
@@ -1226,12 +1230,13 @@ fun SummaryPage(
                                                 style = MaterialTheme.typography.titleSmall,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
+                                                overflow = TextOverflow.Ellipsis,
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                             Text(
                                                 text = activity.type,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                     }
@@ -1342,28 +1347,9 @@ fun WorkoutCard(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable { onEdit() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor =  MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .height(IntrinsicSize.Min),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Accent Bar
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(4.dp)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(accentColor, accentColor.copy(alpha = 0.6f))
-                        )
-                    )
-            )
-
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -1371,31 +1357,34 @@ fun WorkoutCard(
             ) {
                 Text(
                     text = workout.exerciseName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (workout.isPersonalBest) PersonalBestGold else MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 val details = buildString {
                     if (workout.sets > 0) append("${workout.sets} sets ")
                     if (workout.reps > 0) {
-                        if (workout.sets > 0) append("x ")
-                        append("${workout.reps} reps ")
+                    if (workout.sets > 0) append("x ")
+                    append("${workout.reps} reps ")
                     }
-                    if (workout.weight > 0) append("@ ${formatWeight(workout.weight)}${workout.weightUnit}")
+                    if (workout.weight > 0)append("@ ${formatWeight(workout.weight)}${workout.weightUnit}")
                 }
-                Text(text = details, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = details,
+                    color = if (workout.isPersonalBest) PersonalBestGold else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall)
 
                 if (workout.notes.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = workout.notes,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (workout.isPersonalBest) PersonalBestGold else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelSmall,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
@@ -1404,7 +1393,6 @@ fun WorkoutCard(
             }
         }
     }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1460,9 +1448,8 @@ fun WorkoutDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier
             .fillMaxSize()
-            .wrapContentSize(Alignment.BottomCenter)
+            .wrapContentSize(Alignment.Center)
             .padding(24.dp)
-            .padding(bottom = 42.dp)
             .fillMaxWidth(),
         title = { Text(if (workout == null) "Add Workout" else "Edit Workout") },
         text = {
@@ -2244,11 +2231,13 @@ fun WeightTrackingPage(
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Column {
                                 Text("Current Weight", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text("${formatWeight(sortedWeights.last().weight)} kg", style = MaterialTheme.typography.headlineMedium, color = primaryColor, fontWeight = FontWeight.Bold)
                             }
                             prediction?.let { (_, rate) ->
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text("Trend", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     val sign = if (rate >= 0) "+" else ""
                                     Text("$sign${String.format(Locale.getDefault(), "%.2f", rate)} kg/week", color = if (rate <= 0) Color.Green else Color.Red, fontWeight = FontWeight.Bold)
                                 }
