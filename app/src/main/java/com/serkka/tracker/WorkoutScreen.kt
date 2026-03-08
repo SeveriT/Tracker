@@ -140,7 +140,7 @@ fun NumericInput(
                     },
                     modifier = Modifier.size(24.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -578,7 +578,7 @@ fun WorkoutScreen(
                             contentColor = Color.Black,
                             elevation = FloatingActionButtonDefaults.elevation(4.dp),
                         ) {
-                            Icon(Icons.Default.Add, "Add Note")
+                            Icon(Icons.Default.Add, "Add Note", modifier = Modifier.size(32.dp))
                         }
                     }
                 }
@@ -904,8 +904,10 @@ fun SummaryPage(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
+            ElevatedCard(
+                modifier = Modifier.
+                fillMaxWidth()
+                .animateContentSize(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
@@ -986,10 +988,11 @@ fun SummaryPage(
                         }
                         .sortedBy { it.date }
                 }
-                
-                Card(
+
+                ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .animateContentSize()
                         .padding(top = 8.dp)
                         .clickable { onNavigateToWeightTracking() },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1186,9 +1189,10 @@ fun SummaryPage(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         activityPair.forEach { activity ->
-                            Card(
+                            ElevatedCard(
                                 modifier = Modifier
                                     .weight(1f)
+                                    .animateContentSize()
                                     .height(100.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -1335,9 +1339,10 @@ fun WorkoutCard(
 ) {
     val accentColor = if (workout.isPersonalBest) PersonalBestGold else primaryColor
 
-    Card(
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
+            .animateContentSize()
             .padding(vertical = 4.dp)
             .clickable { onEdit() },
         colors = CardDefaults.cardColors(containerColor =  MaterialTheme.colorScheme.surface),
@@ -1682,6 +1687,7 @@ fun WorkoutListContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
+                                .animateContentSize()
                                 .animateItem(),
                             workout = workout,
                             primaryColor = primaryColor,
@@ -1781,9 +1787,10 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
             }
         } else {
             item {
-                Card(
+                ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .animateContentSize()
                         .padding(bottom = 16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
@@ -2091,9 +2098,10 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
         contentPadding = PaddingValues(16.dp)
     ) {
         item {
-            Card(
+            ElevatedCard(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .animateContentSize()
                     .padding(bottom = 16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -2133,9 +2141,10 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
         }
 
         items(workoutStats) { (exercise, weight) ->
-            Card(
+            ElevatedCard(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .animateContentSize()
                     .padding(vertical = 4.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
@@ -2217,9 +2226,10 @@ fun WeightTrackingPage(
     ) {
         if (sortedWeights.isNotEmpty()) {
             item {
-                Card(
+                ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .animateContentSize()
                         .padding(bottom = 16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -2263,10 +2273,11 @@ fun WeightTrackingPage(
             }
 
             items(sortedWeights.reversed(), key = { it.id }) { weightEntry ->
-                Card(
+                ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
+                        .animateContentSize()
                         .animateItem()
                         .clickable { onWeightClick(weightEntry) },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -2459,10 +2470,11 @@ fun NotesPage(
     ) {
         if (notes.isNotEmpty()) {
             items(notes, key = { it.id }) { note ->
-                Card(
+                ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
+                        .animateContentSize()
                         .animateItem()
                         .clickable { onNoteClick(note) },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -2632,8 +2644,9 @@ fun SettingsPage(
         }
 
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth()
+                .animateContentSize(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
@@ -2738,8 +2751,10 @@ fun SettingsPage(
 
 
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
+            ElevatedCard(
+                modifier = Modifier.
+                fillMaxWidth()
+                .animateContentSize(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
@@ -2778,7 +2793,7 @@ fun SettingsPage(
                                 Icon(
                                     imageVector = Icons.Default.CloudUpload,
                                     contentDescription = "Drive Backup",
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
@@ -2808,7 +2823,7 @@ fun SettingsPage(
                                 Icon(
                                     imageVector = Icons.Default.Save,
                                     contentDescription = "Local Backup",
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
@@ -2844,7 +2859,7 @@ fun SettingsPage(
                                 Icon(
                                     imageVector = Icons.Default.SettingsBackupRestore,
                                     contentDescription = "Restore",
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
@@ -2882,7 +2897,7 @@ fun SettingsPage(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.Logout,
                                     contentDescription = "Google Logout",
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
@@ -2925,7 +2940,7 @@ fun SettingsPage(
                                 Icon(
                                     imageVector = Icons.Default.DirectionsRun,
                                     contentDescription = "Strava Logout",
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
