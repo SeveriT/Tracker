@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -843,6 +844,16 @@ fun SummaryPage(
 ) {
     val activities by stravaViewModel.activities.collectAsState()
     val isLoading by stravaViewModel.isLoading.collectAsState()
+    var refreshTrigger by remember { mutableStateOf(false) }
+    
+    // Sync refresh state with ViewModel loading state
+    val isRefreshing = refreshTrigger && isLoading
+    
+    LaunchedEffect(isLoading) {
+        if (!isLoading && refreshTrigger) {
+            refreshTrigger = false
+        }
+    }
 
     val lastActivity = remember(activities) { activities.firstOrNull() }
     val lastWeight = remember(bodyWeights) { bodyWeights.maxByOrNull { it.date } }
@@ -856,32 +867,6 @@ fun SummaryPage(
             date.isEqual(today)
         }
     }
-
-//
-//    val weeklyStreak = remember(workouts, activityData, today) {
-//        Log.d("WeeklyStreak", "Recalculating weeklyStreak with ${workouts.size} workouts")
-//        val startDate = today.minusDays(6)
-//        (0..6).map { i ->
-//            val date = startDate.plusDays(i.toLong())
-//            val hasWorkout = workouts.any { workout ->
-//                val workoutDate = Instant.ofEpochMilli(workout.date).atZone(ZoneId.systemDefault()).toLocalDate()
-//                if (date == today) {
-//                    Log.d("WeeklyStreak", "Checking workout - workoutDate: $workoutDate, comparing to: $date, match: ${workoutDate == date}")
-//                }
-//                workoutDate == date
-//            }
-//            val dateString = String.format(Locale.getDefault(), "%04d-%02d-%02d", date.year, date.monthValue, date.dayOfMonth)
-//            val hasStrava = activityData.containsKey(dateString)
-//            val active = hasWorkout || hasStrava
-//
-//            if (date == today) {
-//                Log.d("WeeklyStreak", "Today - hasWorkout: $hasWorkout, hasStrava: $hasStrava, active: $active")
-//            }
-//
-//            date to active
-//        }
-//    }
-//
 
     val weeklyStreak = remember(activityData, today) {
         val startDate = today.minusDays(6)
@@ -906,11 +891,18 @@ fun SummaryPage(
         stravaViewModel.checkAndFetchActivities()
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            refreshTrigger = true
+            stravaViewModel.checkAndFetchActivities()
+        }
     ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -1327,6 +1319,7 @@ fun SummaryPage(
 
         item {
             Spacer(modifier = Modifier.height(70.dp))
+            }
         }
     }
 }
@@ -1728,15 +1721,21 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
     val isLoading by stravaViewModel.isLoading.collectAsState()
     val error by stravaViewModel.error.collectAsState()
     val profilePicUrl by stravaViewModel.profilePicUrl.collectAsState()
+    var refreshTrigger by remember { mutableStateOf(false) }
+    
+    // Sync refresh state with ViewModel loading state
+    val isRefreshing = refreshTrigger && isLoading
+    
+    LaunchedEffect(isLoading) {
+        if (!isLoading && refreshTrigger) {
+            refreshTrigger = false
+        }
+    }
 
     val activityData = remember(activities) { stravaViewModel.getActivityData() }
     val streak = remember(activities) { stravaViewModel.getWeeklyStreak() }
     val totalStreakActivities = remember(activities) { stravaViewModel.getTotalStreakActivities() }
 
-//
-//    LaunchedEffect(Unit) {
-//        stravaViewModel.checkAndFetchActivities()
-//    }
 
     LaunchedEffect(error) {
         error?.let {
@@ -1744,9 +1743,16 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
         }
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            refreshTrigger = true
+            stravaViewModel.checkAndFetchActivities()
+        }
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (activities.isEmpty() && !isLoading) {
@@ -1799,18 +1805,8 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                             }
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { stravaViewModel.checkAndFetchActivities() }) {
-                                if (isLoading) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = primaryColor, strokeWidth = 2.dp)
-                                } else {
-                                    Icon(Icons.Default.Refresh, "Refresh", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(4.dp))
-
-                            if (profilePicUrl.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically)
+                        { if (profilePicUrl.isNotEmpty()) {
                                 AsyncImage(
                                     model = profilePicUrl,
                                     contentDescription = "Profile Picture",
@@ -1837,6 +1833,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                 Spacer(modifier = Modifier.height(80.dp))
             }
         }
+    }
     }
 }
 
@@ -2332,7 +2329,7 @@ fun WeightChart(weights: List<BodyWeight>, color: Color) {
     // Animation for the path drawing
     val animationProgress = remember { Animatable(0f) }
     LaunchedEffect(weights) {
-        animationProgress.animateTo(1f, animationSpec = tween(1500, easing = FastOutSlowInEasing))
+        animationProgress.animateTo(1f, animationSpec = tween(500, easing = FastOutSlowInEasing))
     }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
