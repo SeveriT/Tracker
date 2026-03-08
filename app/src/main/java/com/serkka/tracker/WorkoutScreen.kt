@@ -465,6 +465,15 @@ fun WorkoutScreen(
                             Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     },
+                    actions = {
+                        IconButton(onClick = { currentScreen = Screen.Settings }) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
                         scrolledContainerColor = MaterialTheme.colorScheme.background,
@@ -473,6 +482,45 @@ fun WorkoutScreen(
                         actionIconContentColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
+            },
+            bottomBar = {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 3.dp
+                ) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
+                        label = { Text("Strava") },
+                        selected = currentScreen == Screen.StravaCalendar,
+                        onClick = { currentScreen = Screen.StravaCalendar }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.FitnessCenter, contentDescription = null) },
+                        label = { Text("Workouts") },
+                        selected = currentScreen == Screen.Workouts,
+                        onClick = { currentScreen = Screen.Workouts }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Dashboard, contentDescription = null) },
+                        label = { Text("Summary") },
+                        selected = currentScreen == Screen.Summary,
+                        onClick = { currentScreen = Screen.Summary }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.MonitorWeight, contentDescription = null) },
+                        label = { Text("Weight") },
+                        selected = currentScreen == Screen.WeightTracking,
+                        onClick = { currentScreen = Screen.WeightTracking }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Notes, contentDescription = null) },
+                        label = { Text("Notes") },
+                        selected = currentScreen == Screen.Notes,
+                        onClick = { currentScreen = Screen.Notes }
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
             },
             floatingActionButton = {
                 Row(
