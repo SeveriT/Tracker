@@ -21,6 +21,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.NavigationBarItemDefaults.colors
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,11 +65,14 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
+import com.serkka.tracker.ui.theme.DarkSurfaceColor
+import com.serkka.tracker.ui.theme.DarkWidgetColor
 import com.serkka.tracker.ui.theme.PersonalBestGold
 import com.serkka.tracker.ui.theme.PBGlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.checkerframework.common.subtyping.qual.Bottom
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.Instant
@@ -86,6 +92,13 @@ private fun formatWeight(weight: Float): String {
     // Round to 3 decimal places to handle floating-point precision errors (e.g., 72.000001 -> 72.0)
     val rounded = (weight * 1000f).roundToInt() / 1000f
     return if (rounded % 1 == 0f) rounded.toInt().toString() else rounded.toString()
+}
+
+private fun formatTime(milliseconds: Long): String {
+    val seconds = (milliseconds / 1000).toInt()
+    val minutes = seconds / 60
+    val remainingSeconds = seconds % 60
+    return String.format("%d:%02d", minutes, remainingSeconds)
 }
 
 private fun String.LeadFloatOrNull(): Float? = this.replace(',', '.').toFloatOrNull()
@@ -159,6 +172,26 @@ fun WorkoutScreen(
     val backupManager = remember { BackupManager(context) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var currentScreen by remember { mutableStateOf(Screen.Summary) }
+    
+    // LazyListStates for different screens
+    val workoutsListState = rememberLazyListState()
+    val summaryListState = rememberLazyListState()
+    val weightListState = rememberLazyListState()
+    val notesListState = rememberLazyListState()
+    
+    // Track if FAB should be visible based on scroll
+    val isFabVisible by remember {
+        derivedStateOf {
+            val currentListState = when (currentScreen) {
+                Screen.Workouts -> workoutsListState
+                Screen.Summary -> summaryListState
+                Screen.WeightTracking -> weightListState
+                Screen.Notes -> notesListState
+                else -> null
+            }
+            (currentListState?.firstVisibleItemIndex ?: 0) <= 2
+        }
+    }
 
     val workouts by viewModel.allWorkouts.collectAsState()
     val bodyWeights by viewModel.allBodyWeights.collectAsState()
@@ -284,6 +317,12 @@ fun WorkoutScreen(
             }
         }
     }
+
+    val navBarColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = MaterialTheme.colorScheme.primary,
+        selectedTextColor = MaterialTheme.colorScheme.primary,
+        indicatorColor = primaryColor.copy(alpha = 0.1f),
+    )
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -448,7 +487,7 @@ fun WorkoutScreen(
             topBar = {
                 TopAppBar(
                     title = {
-                        Text(
+                        Text(modifier = Modifier.padding(start = 8.dp),
                             text = when (currentScreen) {
                                 Screen.Workouts -> "Workouts"
                                 Screen.StravaCalendar -> "Strava Calendar"
@@ -459,11 +498,6 @@ fun WorkoutScreen(
                                 Screen.Settings -> "Settings"
                             }
                         )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
-                        }
                     },
                     actions = {
                         IconButton(onClick = { currentScreen = Screen.Settings }) {
@@ -483,41 +517,49 @@ fun WorkoutScreen(
                     )
                 )
             },
+
+
             bottomBar = {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 3.dp
+                    tonalElevation = 3.dp,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     Spacer(modifier = Modifier.width(4.dp))
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
                         label = { Text("Strava") },
                         selected = currentScreen == Screen.StravaCalendar,
-                        onClick = { currentScreen = Screen.StravaCalendar }
+                        onClick = { currentScreen = Screen.StravaCalendar },
+                        colors = navBarColors
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.FitnessCenter, contentDescription = null) },
                         label = { Text("Workouts") },
                         selected = currentScreen == Screen.Workouts,
-                        onClick = { currentScreen = Screen.Workouts }
+                        onClick = { currentScreen = Screen.Workouts },
+                        colors = navBarColors
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Dashboard, contentDescription = null) },
                         label = { Text("Summary") },
                         selected = currentScreen == Screen.Summary,
-                        onClick = { currentScreen = Screen.Summary }
+                        onClick = { currentScreen = Screen.Summary },
+                        colors = navBarColors
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.MonitorWeight, contentDescription = null) },
                         label = { Text("Weight") },
                         selected = currentScreen == Screen.WeightTracking,
-                        onClick = { currentScreen = Screen.WeightTracking }
+                        onClick = { currentScreen = Screen.WeightTracking },
+                        colors = navBarColors
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Notes, contentDescription = null) },
                         label = { Text("Notes") },
                         selected = currentScreen == Screen.Notes,
-                        onClick = { currentScreen = Screen.Notes }
+                        onClick = { currentScreen = Screen.Notes },
+                        colors = navBarColors
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }
@@ -526,70 +568,105 @@ fun WorkoutScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = if (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking || currentScreen == Screen.Notes || currentScreen == Screen.Summary) 20.dp else 16.dp),
+                        .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (currentSong.title != null) {
+                    // Only show if song is from Spotify
+                    if (currentSong.title != null && currentSong.packageName == "com.spotify.music") {
                         Surface(
-                            color = MaterialTheme.colorScheme.surface,
+                            color = DarkWidgetColor,
                             shape = MaterialTheme.shapes.large,
                             tonalElevation = 2.dp,
                             shadowElevation = 4.dp,
                             modifier = Modifier
-                                .height(56.dp)
                                 .weight(1f)
-                                .padding(end = if (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking || currentScreen == Screen.Notes || currentScreen == Screen.Summary) 16.dp else 0.dp)
+                                .padding(end = if (isFabVisible && (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking || currentScreen == Screen.Notes)) 16.dp else 0.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(0.dp)
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                IconButton(onClick = { MediaRepository.getInstance().togglePlayPause() }) {
-                                    Icon(
-                                        imageVector = if (currentSong.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                        contentDescription = "Play/Pause",
-                                        tint = if (currentSong.isPlaying) primaryColor else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                // Main controls row
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp)
+                                        .padding(horizontal = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(0.dp)
+                                ) {
+                                    IconButton(onClick = { MediaRepository.getInstance().togglePlayPause() }) {
+                                        Icon(
+                                            imageVector = if (currentSong.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                            contentDescription = "Play/Pause",
+                                            tint = if (currentSong.isPlaying) primaryColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 8.dp)
+                                            .clickable { MediaRepository.getInstance().openApp() }
+                                    ) {
+                                        Text(
+                                            text = currentSong.title ?: "",
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+
+                                        Text(
+                                            text = currentSong.artist ?: "",
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(CircleShape)
+                                            .combinedClickable(
+                                                onClick = { MediaRepository.getInstance().nextTrack() },
+                                                onLongClick = {
+                                                    MediaRepository.getInstance().previousTrack()
+                                                }
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.SkipNext,
+                                            contentDescription = "Next (Long press for Previous)",
+                                            tint = primaryColor,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
                                 }
+
+                                // Progress bar
                                 Column(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .padding(horizontal = 8.dp)
-                                        .clickable { MediaRepository.getInstance().openApp() }
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
                                 ) {
-                                    Text(
-                                        text = currentSong.title ?: "",
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-
-                                    Text(
-                                        text = currentSong.artist ?: "",
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
-                                        .combinedClickable(
-                                            onClick = { MediaRepository.getInstance().nextTrack() },
-                                            onLongClick = {
-                                                MediaRepository.getInstance().previousTrack()
-                                            }
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.SkipNext,
-                                        contentDescription = "Next (Long press for Previous)",
-                                        tint = primaryColor
+                                    LinearProgressIndicator(
+                                        progress = {
+                                            val position = currentSong.position?.toFloat() ?: 0f
+                                            val duration = currentSong.duration?.toFloat() ?: 1f
+                                            if (duration > 0) position / duration else 0f
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 8.dp)
+                                            .height(3.dp)
+                                            .clip(RoundedCornerShape(2.dp)),
+                                        color = primaryColor,
+                                        trackColor = DarkSurfaceColor,
                                     )
                                 }
                             }
@@ -598,35 +675,43 @@ fun WorkoutScreen(
                         Spacer(modifier = Modifier.weight(1f))
                     }
 
-                    if (currentScreen == Screen.Workouts || currentScreen == Screen.Summary) {
-                        FloatingActionButton(
-                            onClick = { showAddWorkoutDialog = true },
-                            containerColor = primaryColor,
-                            contentColor = Color.Black,
-                            elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                        ) {
-                            Icon(Icons.Default.Add, "Add Workout", modifier = Modifier.size(32.dp))
-                        }
-                    } else if (currentScreen == Screen.WeightTracking) {
-                        FloatingActionButton(
-                            onClick = {
-                                viewModel.prepareNewEntry()
-                                showAddWeightDialog = true
-                            },
-                            containerColor = primaryColor,
-                            contentColor = Color.Black,
-                            elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                        ) {
-                            Icon(Icons.Default.MonitorWeight, "Add Weight")
-                        }
-                    } else if (currentScreen == Screen.Notes) {
-                        FloatingActionButton(
-                            onClick = { showAddNoteDialog = true },
-                            containerColor = primaryColor,
-                            contentColor = Color.Black,
-                            elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                        ) {
-                            Icon(Icons.Default.Add, "Add Note", modifier = Modifier.size(32.dp))
+                    AnimatedVisibility(
+                        visible = isFabVisible,
+                        enter = fadeIn() + scaleIn(),
+                        exit = fadeOut() + scaleOut()
+                    ) {
+                        if (currentScreen == Screen.Workouts) {
+                            FloatingActionButton(
+                                onClick = { showAddWorkoutDialog = true },
+                                containerColor = DarkWidgetColor,
+                                contentColor = primaryColor,
+                                elevation = FloatingActionButtonDefaults.elevation(4.dp),
+                                modifier = Modifier.size(67.dp)
+                            ) {
+                                Icon(Icons.Default.Add, "Add Workout", modifier = Modifier.size(32.dp))
+                            }
+                        } else if (currentScreen == Screen.WeightTracking) {
+                            FloatingActionButton(
+                                onClick = {
+                                    viewModel.prepareNewEntry()
+                                    showAddWeightDialog = true
+                                },
+                                containerColor = DarkWidgetColor,
+                                contentColor = primaryColor,
+                                elevation = FloatingActionButtonDefaults.elevation(4.dp),
+                                modifier = Modifier.size(67.dp)
+                            ) {
+                                Icon(Icons.Default.MonitorWeight, "Add Weight")
+                            }
+                        } else if (currentScreen == Screen.Notes) {
+                            FloatingActionButton(
+                                onClick = { showAddNoteDialog = true },
+                                containerColor = DarkWidgetColor,
+                                contentColor = primaryColor,
+                                elevation = FloatingActionButtonDefaults.elevation(4.dp),
+                                modifier = Modifier.size(67.dp)                            ) {
+                                Icon(Icons.Default.Add, "Add Note", modifier = Modifier.size(32.dp))
+                            }
                         }
                     }
                 }
@@ -649,7 +734,8 @@ fun WorkoutScreen(
                                 primaryColor = primaryColor,
                                 onDelete = { workoutToDelete = it },
                                 onEdit = { editingWorkout = it },
-                                onCopy = { copyingWorkout = it }
+                                onCopy = { copyingWorkout = it },
+                                listState = workoutsListState
                             )
                         }
                         Screen.StravaCalendar -> {
@@ -660,7 +746,8 @@ fun WorkoutScreen(
                                 bodyWeights = bodyWeights,
                                 primaryColor = primaryColor,
                                 onWeightClick = { editingWeight = it },
-                                onWeightDelete = { weightToDelete = it }
+                                onWeightDelete = { weightToDelete = it },
+                                listState = weightListState
                             )
                         }
                         Screen.WorkoutStats -> {
@@ -671,7 +758,8 @@ fun WorkoutScreen(
                                 notes = notesList,
                                 primaryColor = primaryColor,
                                 onNoteClick = { editingNote = it },
-                                onNoteDelete = { noteToDelete = it }
+                                onNoteDelete = { noteToDelete = it },
+                                listState = notesListState
                             )
                         }
                         Screen.Summary -> {
@@ -683,7 +771,8 @@ fun WorkoutScreen(
                                 onWorkoutEdit = { editingWorkout = it },
                                 onWorkoutDelete = { workoutToDelete = it },
                                 onWorkoutCopy = { copyingWorkout = it },
-                                onNavigateToWeightTracking = { currentScreen = Screen.WeightTracking }
+                                onNavigateToWeightTracking = { currentScreen = Screen.WeightTracking },
+                                listState = summaryListState
                             )
                         }
                         Screen.Settings -> {
@@ -888,7 +977,8 @@ fun SummaryPage(
     onWorkoutEdit: (Workout) -> Unit,
     onWorkoutDelete: (Workout) -> Unit,
     onWorkoutCopy: (Workout) -> Unit,
-    onNavigateToWeightTracking: () -> Unit
+    onNavigateToWeightTracking: () -> Unit,
+    listState: LazyListState = rememberLazyListState()
 ) {
     val activities by stravaViewModel.activities.collectAsState()
     val isLoading by stravaViewModel.isLoading.collectAsState()
@@ -947,6 +1037,7 @@ fun SummaryPage(
         }
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -1695,13 +1786,15 @@ fun WorkoutListContent(
     primaryColor: Color,
     onDelete: (Workout) -> Unit,
     onEdit: (Workout) -> Unit,
-    onCopy: (Workout) -> Unit
+    onCopy: (Workout) -> Unit,
+    listState: LazyListState = rememberLazyListState()
 ) {
     val groupedWorkouts = workouts.groupBy {
         SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(it.date))
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 85.dp)
     ) {
@@ -1744,11 +1837,6 @@ fun WorkoutListContent(
                             onCopy = { onCopy(workout) }
                         )
                     }
-                    
-                    // If odd number of workouts, add spacer for alignment
-//                    if (workoutPair.size == 1) {
-//                       Spacer(modifier = Modifier.weight(1f))
-//                    }
                 }
             }
         }
@@ -2248,7 +2336,8 @@ fun WeightTrackingPage(
     bodyWeights: List<BodyWeight>,
     primaryColor: Color,
     onWeightClick: (BodyWeight) -> Unit,
-    onWeightDelete: (BodyWeight) -> Unit
+    onWeightDelete: (BodyWeight) -> Unit,
+    listState: LazyListState = rememberLazyListState()
 ) {
     val sortedWeights = remember(bodyWeights) { bodyWeights.sortedBy { it.date } }
 
@@ -2269,6 +2358,7 @@ fun WeightTrackingPage(
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) {
@@ -2510,9 +2600,11 @@ fun NotesPage(
     notes: List<Note>,
     primaryColor: Color,
     onNoteClick: (Note) -> Unit,
-    onNoteDelete: (Note) -> Unit
+    onNoteDelete: (Note) -> Unit,
+    listState: LazyListState = rememberLazyListState()
 ) {
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) {

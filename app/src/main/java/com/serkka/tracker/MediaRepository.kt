@@ -4,7 +4,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class MediaRepository private constructor() {
-    private val _currentSong = MutableStateFlow(SongInfo())
+    private val _currentSong = MutableStateFlow(
+        SongInfo(
+            title = null,
+            artist = null,
+            isPlaying = false,
+            packageName = null,
+            position = null,
+            duration = null
+        )
+    )
     val currentSong = _currentSong.asStateFlow()
 
     private var nextTrackAction: (() -> Unit)? = null

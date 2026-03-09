@@ -7,18 +7,33 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.os.Handler
+import android.os.Looper
 
 data class SongInfo(
     val title: String? = null,
     val artist: String? = null,
     val isPlaying: Boolean = false,
-    val packageName: String? = null
+    val packageName: String? = null,
+    val position: Long?,
+    val duration: Long?
 )
 
 class MediaNotificationListener : NotificationListenerService() {
 
     private var mediaSessionManager: MediaSessionManager? = null
     private val mediaRepository = MediaRepository.getInstance()
+    private val handler = Handler(Looper.getMainLooper())
+    private var isUpdatingPosition = false
+
+    private val positionUpdateRunnable = object : Runnable {
+        override fun run() {
+            if (isUpdatingPosition) {
+                updateSongInfo()
+                handler.postDelayed(this, 1000) // Update every second
+            }
+        }
+    }
 
     private val callback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) {
@@ -62,15 +77,27 @@ class MediaNotificationListener : NotificationListenerService() {
     private fun updateSongInfo() {
         val metadata = activeController?.metadata
         val playbackState = activeController?.playbackState
+        val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING
         
         val info = SongInfo(
             title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
             artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
             isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING,
-            packageName = activeController?.packageName
+            packageName = activeController?.packageName,
+            position = playbackState?.position,
+            duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION)
         )
         mediaRepository.updateSong(info)
+
+        if (isPlaying && !isUpdatingPosition) {
+            isUpdatingPosition = true
+            handler.postDelayed(positionUpdateRunnable, 1000)
+        } else if (!isPlaying && isUpdatingPosition) {
+            isUpdatingPosition = false
+            handler.removeCallbacks(positionUpdateRunnable)
+        }
     }
+
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         updateController()
@@ -107,5 +134,11 @@ class MediaNotificationListener : NotificationListenerService() {
                 }
             }
         }
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+        isUpdatingPosition = false
+        handler.removeCallbacks(positionUpdateRunnable)
+        activeController?.unregisterCallback(callback)
     }
 }

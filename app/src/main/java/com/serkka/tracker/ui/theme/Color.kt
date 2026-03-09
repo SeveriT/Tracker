@@ -18,7 +18,7 @@ val DarkBlueVariant = Color(0xFF1E1E1E)
 val OrangePrimary = Color(0xFFFF6D00) 
 val DarkBackground = Color(0xFF0A0A0A)
 val DarkSurfaceColor = Color(0xFF141414)
-val DarkWidgetColor = Color(0xFF0F0F0F)
+val DarkWidgetColor = Color(0xFF1E1E1E)
 val DarkMenuBackgroundColor = Color(0xFF141414)
 val DarkMenuItemColor = Color(0xFFDEDEDE)
 
