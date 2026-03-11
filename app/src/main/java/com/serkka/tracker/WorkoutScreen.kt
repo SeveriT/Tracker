@@ -89,6 +89,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 
 enum class Screen {
@@ -565,7 +567,19 @@ fun WorkoutScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(0.dp)
                                 ) {
-                                    IconButton(onClick = { MediaRepository.getInstance().togglePlayPause() }) {
+                                    val haptic = LocalHapticFeedback.current
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(CircleShape)
+                                            .combinedClickable(
+                                                onClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    MediaRepository.getInstance().togglePlayPause()
+                                                }
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
                                         Icon(
                                             imageVector = if (currentSong.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                             contentDescription = "Play/Pause",
@@ -603,8 +617,12 @@ fun WorkoutScreen(
                                             .size(48.dp)
                                             .clip(CircleShape)
                                             .combinedClickable(
-                                                onClick = { MediaRepository.getInstance().nextTrack() },
+                                                onClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    MediaRepository.getInstance().nextTrack()
+                                                },
                                                 onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     MediaRepository.getInstance().previousTrack()
                                                 }
                                             ),
