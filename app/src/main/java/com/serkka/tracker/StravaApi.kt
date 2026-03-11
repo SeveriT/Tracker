@@ -48,6 +48,30 @@ interface StravaApi {
         @Field("grant_type") grantType: String = "authorization_code"
     ): TokenResponse
 
+    /**
+     * Create a manual activity on Strava.
+     *
+     * Required fields:
+     *   - name            : display name for the activity
+     *   - sportType       : e.g. "Run", "Ride", "WeightTraining" (see Strava docs)
+     *   - startDateLocal  : ISO 8601 without timezone, e.g. "2025-06-01T09:30:00"
+     *   - elapsedTime     : total duration in seconds
+     *
+     * Optional fields:
+     *   - distance        : metres (omit or pass null to skip)
+     *   - description     : free-text description
+     */
+    @FormUrlEncoded
+    @POST("activities")
+    suspend fun createActivity(
+        @Header("Authorization") token: String,
+        @Field("name") name: String,
+        @Field("sport_type") sportType: String,
+        @Field("start_date_local") startDateLocal: String,
+        @Field("elapsed_time") elapsedTime: Int,
+        @Field("distance") distance: Float? = null,
+        @Field("description") description: String? = null
+    ): StravaActivity
 }
 
 data class TokenResponse(

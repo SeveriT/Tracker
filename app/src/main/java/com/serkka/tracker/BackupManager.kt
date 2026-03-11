@@ -39,35 +39,51 @@ class BackupManager(private val context: Context) {
     }
 
     suspend fun restoreDatabase(uris: List<Uri>): Boolean = withContext(Dispatchers.IO) {
+        val dbPath  = context.getDatabasePath(dbName)
+        val walFile = File(dbPath.path + "-wal")
+        val shmFile = File(dbPath.path + "-shm")
+
+        // Stage into temp files first so the original DB is untouched if anything fails
+        val tempDb  = File(dbPath.path + ".restore_tmp")
+        val tempWal = File(dbPath.path + "-wal.restore_tmp")
+        val tempShm = File(dbPath.path + "-shm.restore_tmp")
+
         return@withContext try {
-            // 1. Close and Reset
+            // 1. Copy incoming URIs to temp files — original DB still intact here
+            for (uri in uris) {
+                val fileName = getFileName(uri) ?: continue
+                val tempTarget = when {
+                    fileName.endsWith("-wal") -> tempWal
+                    fileName.endsWith("-shm") -> tempShm
+                    else                      -> tempDb
+                }
+                copyFileFromUri(uri, tempTarget)
+                Log.d("BackupManager", "Staged $fileName → ${tempTarget.name} (${tempTarget.length()} bytes)")
+            }
+
+            if (!tempDb.exists()) {
+                Log.e("BackupManager", "No main db file found among the selected URIs")
+                return@withContext false
+            }
+
+            // 2. All copies succeeded — now close and swap atomically
             WorkoutDatabase.getDatabase(context).close()
             WorkoutDatabase.resetInstance()
 
-            // 2. Clean up current files
-            val dbPath = context.getDatabasePath(dbName)
-            val walFile = File(dbPath.path + "-wal")
-            val shmFile = File(dbPath.path + "-shm")
-            
-            if (dbPath.exists()) dbPath.delete()
+            if (dbPath.exists())  dbPath.delete()
             if (walFile.exists()) walFile.delete()
             if (shmFile.exists()) shmFile.delete()
 
-            // 3. Restore selected files
-            for (uri in uris) {
-                val fileName = getFileName(uri) ?: continue
-                val targetFile = when {
-                    fileName.endsWith("-wal") -> walFile
-                    fileName.endsWith("-shm") -> shmFile
-                    else -> dbPath // Default to main db file
-                }
-                copyFileFromUri(uri, targetFile)
-                Log.d("BackupManager", "Restored $fileName to ${targetFile.name} (Size: ${targetFile.length()})")
-            }
-            
+            tempDb.renameTo(dbPath)
+            if (tempWal.exists()) tempWal.renameTo(walFile)
+            if (tempShm.exists()) tempShm.renameTo(shmFile)
+
+            Log.d("BackupManager", "Restore complete")
             true
         } catch (e: Exception) {
             Log.e("BackupManager", "Restore failed", e)
+            // Clean up any temp files so they don't linger
+            tempDb.delete(); tempWal.delete(); tempShm.delete()
             false
         }
     }

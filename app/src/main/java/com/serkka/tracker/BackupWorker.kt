@@ -59,6 +59,9 @@ class BackupWorker(
                 )
                 if (fileId != null) {
                     Log.d("BackupWorker", "Auto-backup successful: $fileId")
+                    applicationContext
+                        .getSharedPreferences("backup_prefs", Context.MODE_PRIVATE)
+                        .edit().putLong("last_backup_ms", System.currentTimeMillis()).apply()
                     androidx.work.ListenableWorker.Result.success()
                 } else {
                     Log.e("BackupWorker", "Drive upload failed")

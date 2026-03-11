@@ -35,11 +35,13 @@ class GoogleDriveHelper(private val driveService: Drive) {
             val existingFileId = findFileByName(driveFileName, folderId)
             
             val googleFile = if (existingFileId != null) {
-                // Update existing file
-                driveService.files().update(existingFileId, null, content).execute()
+                // Update existing file — setFields ensures id is always returned
+                driveService.files().update(existingFileId, null, content)
+                    .setFields("id").execute()
             } else {
                 // Create new file
-                driveService.files().create(metadata, content).execute()
+                driveService.files().create(metadata, content)
+                    .setFields("id").execute()
             }
 
             Log.d("GoogleDriveHelper", "Drive upload successful: ${googleFile.id}")

@@ -84,9 +84,15 @@ import java.time.format.TextStyle
 import java.time.temporal.TemporalAdjusters
 import java.util.*
 import kotlin.math.roundToInt
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+
 
 enum class Screen {
-    Workouts, StravaCalendar, WeightTracking, WorkoutStats, Notes, Summary, Settings
+    Workouts, StravaCalendar, WeightTracking, WorkoutStats, Notes, Summary, Settings, WorkoutTimer
 }
 
 private fun formatWeight(weight: Float): String {
@@ -166,7 +172,8 @@ fun NumericInput(
 fun WorkoutScreen(
     viewModel: WorkoutViewModel,
     stravaViewModel: StravaViewModel = viewModel(),
-    themeViewModel: ThemeViewModel = viewModel()
+    themeViewModel: ThemeViewModel = viewModel(),
+    timerViewModel: WorkoutTimerViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -216,7 +223,8 @@ fun WorkoutScreen(
     var weightToDelete by remember { mutableStateOf<BodyWeight?>(null) }
     var noteToDelete by remember { mutableStateOf<Note?>(null) }
     val currentSong by MediaRepository.getInstance().currentSong.collectAsState()
-
+    val timerIsRunning    by timerViewModel.isRunning.collectAsState()
+    val timerElapsed      by timerViewModel.elapsedSeconds.collectAsState()
     val primaryColor by themeViewModel.primaryColor.collectAsState()
 
     // Google Sign-In Setup
@@ -273,6 +281,8 @@ fun WorkoutScreen(
 
                         withContext(Dispatchers.Main) {
                             if (fileId != null) {
+                                context.getSharedPreferences("backup_prefs", android.content.Context.MODE_PRIVATE)
+                                    .edit().putLong("last_backup_ms", System.currentTimeMillis()).apply()
                                 Toast.makeText(context, "Drive backup successful!", Toast.LENGTH_SHORT).show()
                             } else {
                                 Toast.makeText(context, "Drive upload failed", Toast.LENGTH_SHORT).show()
@@ -333,66 +343,7 @@ fun WorkoutScreen(
                 drawerContentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
-                NavigationDrawerItem(
-                    label = { Text("Summary", modifier = Modifier.padding(start = 8.dp)) },
-                    icon = { Icon(Icons.Default.Dashboard, null) },
-                    selected = currentScreen == Screen.Summary,
-                    onClick = {
-                        currentScreen = Screen.Summary
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    colors = NavigationDrawerItemDefaults.colors(
-                        selectedContainerColor = primaryColor.copy(alpha = 0.1f),
-                        unselectedContainerColor = Color.Transparent,
-                        selectedIconColor = primaryColor,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        selectedTextColor = primaryColor,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier
-                        .padding(NavigationDrawerItemDefaults.ItemPadding)
-                        .padding(vertical = 6.dp)
-                )
-                NavigationDrawerItem(
-                    label = { Text("Workouts", modifier = Modifier.padding(start = 8.dp)) },
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, null) },
-                    selected = currentScreen == Screen.Workouts,
-                    onClick = {
-                        currentScreen = Screen.Workouts
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    colors = NavigationDrawerItemDefaults.colors(
-                        selectedContainerColor = primaryColor.copy(alpha = 0.1f),
-                        unselectedContainerColor = Color.Transparent,
-                        selectedIconColor = primaryColor,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        selectedTextColor = primaryColor,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier
-                        .padding(NavigationDrawerItemDefaults.ItemPadding)
-                        .padding(vertical = 6.dp)
-                )
-                NavigationDrawerItem(
-                    label = { Text("Strava Calendar", modifier = Modifier.padding(start = 8.dp)) },
-                    icon = { Icon(Icons.Default.DateRange, null) },
-                    selected = currentScreen == Screen.StravaCalendar,
-                    onClick = {
-                        currentScreen = Screen.StravaCalendar
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    colors = NavigationDrawerItemDefaults.colors(
-                        selectedContainerColor = primaryColor.copy(alpha = 0.1f),
-                        unselectedContainerColor = Color.Transparent,
-                        selectedIconColor = primaryColor,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        selectedTextColor = primaryColor,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier
-                        .padding(NavigationDrawerItemDefaults.ItemPadding)
-                        .padding(vertical = 6.dp)
-                )
+
                 NavigationDrawerItem(
                     label = { Text("Workout Stats", modifier = Modifier.padding(start = 8.dp)) },
                     icon = { Icon(Icons.Default.BarChart, null) },
@@ -413,26 +364,7 @@ fun WorkoutScreen(
                         .padding(NavigationDrawerItemDefaults.ItemPadding)
                         .padding(vertical = 6.dp)
                 )
-                NavigationDrawerItem(
-                    label = { Text("Weight Tracking", modifier = Modifier.padding(start = 8.dp)) },
-                    icon = { Icon(Icons.Default.MonitorWeight, null) },
-                    selected = currentScreen == Screen.WeightTracking,
-                    onClick = {
-                        currentScreen = Screen.WeightTracking
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    colors = NavigationDrawerItemDefaults.colors(
-                        selectedContainerColor = primaryColor.copy(alpha = 0.1f),
-                        unselectedContainerColor = Color.Transparent,
-                        selectedIconColor = primaryColor,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        selectedTextColor = primaryColor,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier
-                        .padding(NavigationDrawerItemDefaults.ItemPadding)
-                        .padding(vertical = 6.dp)
-                )
+
                 NavigationDrawerItem(
                     label = { Text("Notes", modifier = Modifier.padding(start = 8.dp)) },
                     icon = { Icon(Icons.AutoMirrored.Filled.Notes, null) },
@@ -497,10 +429,48 @@ fun WorkoutScreen(
                                 Screen.Notes -> "Notes"
                                 Screen.Summary -> "Weekly Summary"
                                 Screen.Settings -> "Settings"
+                                Screen.WorkoutTimer -> "Workout Timer"
                             }
                         )
                     },
                     actions = {
+                        // ── Live timer pill (visible on every screen except the timer itself) ──
+                        AnimatedVisibility(
+                            visible = timerIsRunning && currentScreen != Screen.WorkoutTimer,
+                            enter = fadeIn() + slideInHorizontally { it },
+                            exit = fadeOut() + slideOutHorizontally { it }
+                        ) {
+                            AssistChip(
+                                onClick = { currentScreen = Screen.WorkoutTimer },
+                                label = {
+                                    Text(
+                                        text = formatElapsed(timerElapsed),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Timer,
+                                        contentDescription = "Timer running",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                        }
+                        IconButton(onClick = { currentScreen = Screen.Notes }) {
+                            Icon(
+                                imageVector = Icons.Default.Notes,
+                                contentDescription = "Notes",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         IconButton(onClick = { currentScreen = Screen.Settings }) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
@@ -556,10 +526,10 @@ fun WorkoutScreen(
                         colors = navBarColors
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Notes, contentDescription = null) },
-                        label = { Text("Notes") },
-                        selected = currentScreen == Screen.Notes,
-                        onClick = { currentScreen = Screen.Notes },
+                        icon     = { Icon(Icons.Default.Timer, null) },
+                        label    = { Text("Timer") },
+                        selected = currentScreen == Screen.WorkoutTimer,
+                        onClick  = { currentScreen = Screen.WorkoutTimer },
                         colors = navBarColors
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -803,6 +773,12 @@ fun WorkoutScreen(
                                 restoreLauncher = restoreLauncher,
                                 googleSignInClient = googleSignInClient,
                                 context = context
+                            )
+                        }
+                        Screen.WorkoutTimer -> {
+                            WorkoutTimerScreen(
+                                timerViewModel  = timerViewModel,
+                                stravaViewModel = stravaViewModel
                             )
                         }
                     }
@@ -1935,7 +1911,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                             .appendQueryParameter("redirect_uri", "tracker-app://localhost")
                             .appendQueryParameter("response_type", "code")
                             .appendQueryParameter("approval_prompt", "force")
-                            .appendQueryParameter("scope", "activity:read_all,profile:read_all")
+                            .appendQueryParameter("scope", "activity:read_all,activity:write,profile:read_all")
                             .build()
 
                         context.startActivity(Intent(Intent.ACTION_VIEW, authUri))
@@ -2776,6 +2752,79 @@ fun NoteDialog(
 }
 
 
+// ---------------------------------------------------------------------------
+// Next-backup countdown widget — shown in the Settings backup card
+// ---------------------------------------------------------------------------
+
+private const val BACKUP_INTERVAL_MS = 24L * 60 * 60 * 1000  // 24 hours
+
+@Composable
+private fun NextBackupCountdown(primaryColor: Color) {
+    val context = LocalContext.current
+    val prefs   = remember { context.getSharedPreferences("backup_prefs", android.content.Context.MODE_PRIVATE) }
+
+    // Tick every second so the display stays live
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(1_000L)
+            now = System.currentTimeMillis()
+        }
+    }
+
+    val lastBackupMs = prefs.getLong("last_backup_ms", 0L)
+    val remainingMs  = (lastBackupMs + BACKUP_INTERVAL_MS - now).coerceAtLeast(0L)
+    val isDue        = lastBackupMs == 0L || remainingMs == 0L
+
+    val h = remainingMs / 3_600_000
+    val m = (remainingMs % 3_600_000) / 60_000
+    val s = (remainingMs % 60_000) / 1_000
+
+    Surface(
+        color    = if (isDue) MaterialTheme.colorScheme.errorContainer
+                   else       primaryColor.copy(alpha = 0.08f),
+        shape    = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier              = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector        = if (isDue) Icons.Default.CloudOff else Icons.Default.CloudSync,
+                contentDescription = null,
+                tint               = if (isDue) MaterialTheme.colorScheme.error else primaryColor,
+                modifier           = Modifier.size(20.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text  = if (isDue) "Cloud backup due" else "Next cloud backup in",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isDue) MaterialTheme.colorScheme.error
+                            else       MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (!isDue) {
+                    Text(
+                        text       = String.format("%02d:%02d:%02d", h, m, s),
+                        style      = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color      = primaryColor
+                    )
+                }
+            }
+            if (lastBackupMs > 0L) {
+                Text(
+                    text  = "Last: " + java.text.SimpleDateFormat("MMM d, HH:mm", java.util.Locale.getDefault())
+                                .format(java.util.Date(lastBackupMs)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun SettingsPage(
     primaryColor: Color,
@@ -2793,6 +2842,8 @@ fun SettingsPage(
     val notesList by viewModel.allNotes.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    val activities by stravaViewModel.activities.collectAsState()
+    val isLoading by stravaViewModel.isLoading.collectAsState()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -2933,6 +2984,8 @@ fun SettingsPage(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+
+                    NextBackupCountdown(primaryColor = primaryColor)
 
                     // First Row
                     Row(
@@ -3078,7 +3131,47 @@ fun SettingsPage(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+                    ) { if (activities.isEmpty() && !isLoading)
+                        Button(
+                            onClick = {
+                                val authUri = "https://www.strava.com/oauth/mobile/authorize".toUri()
+                                    .buildUpon()
+                                    .appendQueryParameter("client_id", "206279")
+                                    .appendQueryParameter("redirect_uri", "tracker-app://localhost")
+                                    .appendQueryParameter("response_type", "code")
+                                    .appendQueryParameter("approval_prompt", "force")
+                                    .appendQueryParameter("scope", "activity:read_all,activity:write,profile:read_all")
+                                    .build()
+
+                                context.startActivity(Intent(Intent.ACTION_VIEW, authUri))
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = primaryColor,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(8.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DirectionsRun,
+                                    contentDescription = "Login with strava",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Login with Strava",
+                                    fontSize = 12.sp,
+                                    textAlign = TextAlign.Left
+                                )
+                            }
+                        }
+                        else
                         Button(
                             onClick = {
                                 stravaViewModel.logout()
@@ -3115,7 +3208,13 @@ fun SettingsPage(
                                 )
                             }
                         }
+                    }
 
+                    // Fourth Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         Button(
                             onClick = {
                                 showDeleteConfirmDialog = true

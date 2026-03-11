@@ -19,9 +19,24 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 
+// ---------------------------------------------------------------------------
+// Upload state for the workout timer
+// ---------------------------------------------------------------------------
+
+sealed class UploadState {
+    object Idle    : UploadState()
+    object Loading : UploadState()
+    data class Success(val activity: StravaActivity) : UploadState()
+    data class Error(val message: String)            : UploadState()
+}
+
+// ---------------------------------------------------------------------------
+// ViewModel
+// ---------------------------------------------------------------------------
+
 class StravaViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences("strava_prefs", Context.MODE_PRIVATE)
-    
+
     private val _activities = MutableStateFlow<List<StravaActivity>>(emptyList())
     val activities: StateFlow<List<StravaActivity>> = _activities
 
@@ -36,6 +51,10 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _profilePicUrl = MutableStateFlow(prefs.getString("profile_pic", "") ?: "")
     val profilePicUrl: StateFlow<String> = _profilePicUrl
+
+    /** Upload state for the workout timer screen. */
+    private val _uploadState = MutableStateFlow<UploadState>(UploadState.Idle)
+    val uploadState: StateFlow<UploadState> = _uploadState
 
     // How many recent activities to fetch full details for (to get calories)
     private val DETAIL_FETCH_LIMIT = 7
@@ -61,9 +80,9 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
 
     // Manual fetch only, or triggered by UI
     fun checkAndFetchActivities() {
-        val accessToken = prefs.getString("access_token", "") ?: ""
+        val accessToken  = prefs.getString("access_token", "") ?: ""
         val refreshToken = prefs.getString("refresh_token", "") ?: ""
-        val expiresAt = prefs.getLong("expires_at", 0)
+        val expiresAt    = prefs.getLong("expires_at", 0)
 
         if (accessToken.isNotBlank()) {
             val now = System.currentTimeMillis() / 1000
@@ -79,16 +98,47 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * Returns a fresh, valid Bearer token string, refreshing via the refresh token
+     * if the current access token is within 10 minutes of expiry.
+     * Throws if no token is available or refresh fails.
+     */
+    private suspend fun getValidAccessToken(): String {
+        val accessToken  = prefs.getString("access_token",  "") ?: ""
+        val refreshToken = prefs.getString("refresh_token", "") ?: ""
+        val expiresAt    = prefs.getLong("expires_at", 0)
+
+        if (accessToken.isBlank()) throw IllegalStateException("Not logged in to Strava")
+
+        val now = System.currentTimeMillis() / 1000
+        return if (now < expiresAt - 600) {
+            // Token still valid
+            "Bearer $accessToken"
+        } else if (refreshToken.isNotBlank()) {
+            // Refresh silently
+            Log.d("StravaViewModel", "Token near expiry, refreshing…")
+            val response = stravaApi.refreshToken(
+                clientId     = "206279",
+                clientSecret = "d7cade3d4543368f9b0185416964f3f9fad4f1ca",
+                refreshToken = refreshToken
+            )
+            saveTokenResponse(response)
+            "Bearer ${response.access_token}"
+        } else {
+            // No refresh token — use what we have and hope for the best
+            "Bearer $accessToken"
+        }
+    }
+
     private fun refreshStravaToken(refreshToken: String) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 val response = stravaApi.refreshToken(
-                    clientId = "206279",
-                    clientSecret = "d7cade3d4543368f9b0185416964f3f9fad4f1ca",
-                    refreshToken = refreshToken
+                    clientId      = "206279",
+                    clientSecret  = "d7cade3d4543368f9b0185416964f3f9fad4f1ca",
+                    refreshToken  = refreshToken
                 )
-                
                 saveTokenResponse(response)
                 fetchActivitiesWithToken(response.access_token)
                 fetchProfile(response.access_token)
@@ -104,9 +154,9 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun saveTokenResponse(response: TokenResponse) {
         prefs.edit().apply {
-            putString("access_token", response.access_token)
+            putString("access_token",  response.access_token)
             putString("refresh_token", response.refresh_token)
-            putLong("expires_at", response.expires_at)
+            putLong("expires_at",      response.expires_at)
             response.athlete?.profileMedium?.let { putString("profile_pic", it) }
             apply()
         }
@@ -134,15 +184,11 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun fetchActivitiesWithToken(accessToken: String) {
         val trimmedToken = accessToken.trim()
-        val authHeader = if (trimmedToken.startsWith("Bearer ", ignoreCase = true)) {
-            trimmedToken
-        } else {
-            "Bearer $trimmedToken"
-        }
+        val authHeader   = if (trimmedToken.startsWith("Bearer ", ignoreCase = true)) trimmedToken else "Bearer $trimmedToken"
 
         viewModelScope.launch {
             _isLoading.value = true
-            _error.value = null
+            _error.value     = null
             try {
                 val response = stravaApi.getActivities(authHeader, perPage = 200)
 
@@ -152,16 +198,15 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
                 }
 
                 if (response.isEmpty()) {
-                    _error.value = "No activities found."
+                    _error.value     = "No activities found."
                     _activities.value = emptyList()
                     return@launch
                 }
 
-                // Publish the list immediately so the UI is responsive
+                // Publish immediately so the UI is responsive
                 _activities.value = response
 
                 // Then fetch full details for the most recent DETAIL_FETCH_LIMIT activities
-                // to populate calories (not available in the list endpoint)
                 val detailedActivities = response
                     .take(DETAIL_FETCH_LIMIT)
                     .map { activity ->
@@ -170,17 +215,14 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
                                 stravaApi.getActivityDetail(authHeader, activity.id)
                             } catch (e: Exception) {
                                 Log.e("StravaViewModel", "Failed to fetch detail for ${activity.id}", e)
-                                activity // Fall back to the original if detail fetch fails
+                                activity
                             }
                         }
                     }
                     .awaitAll()
 
-                // Merge detailed activities back into the full list
-                val detailMap = detailedActivities.associateBy { it.id }
-                _activities.value = response.map { activity ->
-                    detailMap[activity.id] ?: activity
-                }
+                val detailMap     = detailedActivities.associateBy { it.id }
+                _activities.value = response.map { activity -> detailMap[activity.id] ?: activity }
 
             } catch (e: HttpException) {
                 if (e.code() == 401) {
@@ -204,14 +246,13 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
     fun exchangeCodeForToken(code: String) {
         viewModelScope.launch {
             _isLoading.value = true
-            _error.value = null
+            _error.value     = null
             try {
                 val response = stravaApi.exchangeToken(
-                    clientId = "206279",
+                    clientId     = "206279",
                     clientSecret = "d7cade3d4543368f9b0185416964f3f9fad4f1ca",
-                    code = code
+                    code         = code
                 )
-                
                 saveTokenResponse(response)
                 fetchActivitiesWithToken(response.access_token)
                 fetchProfile(response.access_token)
@@ -224,11 +265,75 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // ---------------------------------------------------------------------------
+    // Workout timer upload
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Upload a manually recorded workout to Strava.
+     *
+     * @param name            Activity title shown on Strava
+     * @param sportType       Strava sport_type string, e.g. "Run", "WeightTraining"
+     * @param startDateLocal  ISO 8601 local datetime, e.g. "2025-06-01T09:30:00"
+     * @param elapsedSeconds  Total workout duration in seconds
+     * @param distanceMeters  Optional distance in metres
+     */
+    fun uploadWorkout(
+        name:           String,
+        sportType:      String,
+        startDateLocal: String,
+        elapsedSeconds: Int,
+        distanceMeters: Float? = null
+    ) {
+        if (prefs.getString("access_token", "").isNullOrBlank()) {
+            _uploadState.value = UploadState.Error("Not logged in to Strava. Connect in Settings first.")
+            return
+        }
+
+        viewModelScope.launch {
+            _uploadState.value = UploadState.Loading
+            try {
+                // Refresh token if needed before every upload — fixes "Session expired" on stale tokens
+                val authHeader = getValidAccessToken()
+
+                val activity = stravaApi.createActivity(
+                    token          = authHeader,
+                    name           = name,
+                    sportType      = sportType,
+                    startDateLocal = startDateLocal,
+                    elapsedTime    = elapsedSeconds,
+                    distance       = distanceMeters
+                )
+                _uploadState.value = UploadState.Success(activity)
+            } catch (e: HttpException) {
+                val msg = when (e.code()) {
+                    401  -> "Strava login expired. Please reconnect in Settings."
+                    403  -> "Strava permission denied – make sure 'activity:write' scope is granted."
+                    else -> "Strava error (${e.code()})"
+                }
+                _uploadState.value = UploadState.Error(msg)
+            } catch (e: IllegalStateException) {
+                _uploadState.value = UploadState.Error("Not logged in to Strava. Connect in Settings first.")
+            } catch (e: Exception) {
+                _uploadState.value = UploadState.Error("Upload failed: ${e.message}")
+            }
+        }
+    }
+
+    /** Reset upload state back to Idle (call after handling Success or Error). */
+    fun clearUploadState() {
+        _uploadState.value = UploadState.Idle
+    }
+
+    // ---------------------------------------------------------------------------
+    // Auth / misc
+    // ---------------------------------------------------------------------------
+
     fun logout() {
         prefs.edit().clear().apply()
-        _savedToken.value = ""
+        _savedToken.value   = ""
         _profilePicUrl.value = ""
-        _activities.value = emptyList()
+        _activities.value   = emptyList()
     }
 
     fun clearError() {
@@ -250,14 +355,14 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
 
         var currentStreak = 0
         var checkDate = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        
+
         val activitiesThisWeek = activityDates.any { !it.isBefore(checkDate) }
         if (!activitiesThisWeek) {
             checkDate = checkDate.minusWeeks(1)
         }
 
         while (true) {
-            val hasActivityInWeek = activityDates.any { 
+            val hasActivityInWeek = activityDates.any {
                 (it.isEqual(checkDate) || it.isAfter(checkDate)) && it.isBefore(checkDate.plusWeeks(1))
             }
             if (hasActivityInWeek) {
@@ -289,9 +394,9 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
 
         while (true) {
             val weekStart = checkDate
-            val weekEnd = checkDate.plusWeeks(1)
-            
-            val activitiesInWeek = allActivities.filter { 
+            val weekEnd   = checkDate.plusWeeks(1)
+
+            val activitiesInWeek = allActivities.filter {
                 val date = LocalDate.parse(it.startDate.substringBefore("T"))
                 (date.isEqual(weekStart) || date.isAfter(weekStart)) && date.isBefore(weekEnd)
             }
