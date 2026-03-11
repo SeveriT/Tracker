@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package com.serkka.tracker
 
@@ -1058,8 +1058,8 @@ fun SummaryPage(
                 modifier = Modifier.
                 fillMaxWidth()
                 .animateContentSize(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -1145,8 +1145,8 @@ fun SummaryPage(
                         .animateContentSize()
                         .padding(top = 8.dp)
                         .clickable { onNavigateToWeightTracking() },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp, pressedElevation = 6.dp, hoveredElevation = 12.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -1344,8 +1344,8 @@ fun SummaryPage(
                                     .weight(1f)
                                     .animateContentSize()
                                     .height(100.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
                             ) {
                                 Column(
                                     modifier = Modifier
@@ -1497,18 +1497,26 @@ fun WorkoutCard(
 ) {
     val accentColor = if (workout.isPersonalBest) PersonalBestGold else primaryColor
 
+    val haptic = LocalHapticFeedback.current
+
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize()
             .padding(vertical = 4.dp)
-            .clickable { onEdit() },
-        colors = CardDefaults.cardColors(containerColor =  MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+            .combinedClickable(
+                onClick = { onEdit() },
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onCopy()
+                }
+            ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp, pressedElevation = 6.dp, hoveredElevation = 14.dp)
     ) {
             Column(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .padding(12.dp)
             ) {
                 Text(
@@ -1934,7 +1942,6 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
 
                         context.startActivity(Intent(Intent.ACTION_VIEW, authUri))
                     },
-                    modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = primaryColor, contentColor = Color.Black)
                 ) {
                     Text("Login with Strava", fontSize = 18.sp)
@@ -1947,7 +1954,8 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                         .fillMaxWidth()
                         .animateContentSize()
                         .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -2258,8 +2266,8 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                     .fillMaxWidth()
                     .animateContentSize()
                     .padding(bottom = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -2301,7 +2309,8 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                     .fillMaxWidth()
                     .animateContentSize()
                     .padding(vertical = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -2388,8 +2397,8 @@ fun WeightTrackingPage(
                         .fillMaxWidth()
                         .animateContentSize()
                         .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -2437,7 +2446,8 @@ fun WeightTrackingPage(
                         .animateContentSize()
                         .animateItem()
                         .clickable { onWeightClick(weightEntry) },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -2636,7 +2646,8 @@ fun NotesPage(
                         .animateContentSize()
                         .animateItem()
                         .clickable { onNoteClick(note) },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -2881,8 +2892,8 @@ fun SettingsPage(
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth()
                 .animateContentSize(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -2989,8 +3000,8 @@ fun SettingsPage(
                 modifier = Modifier.
                 fillMaxWidth()
                 .animateContentSize(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
