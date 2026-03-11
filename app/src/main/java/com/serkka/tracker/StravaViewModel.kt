@@ -5,6 +5,8 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -35,6 +37,9 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
     private val _profilePicUrl = MutableStateFlow(prefs.getString("profile_pic", "") ?: "")
     val profilePicUrl: StateFlow<String> = _profilePicUrl
 
+    // How many recent activities to fetch full details for (to get calories)
+    private val DETAIL_FETCH_LIMIT = 7
+
     private val stravaApi: StravaApi by lazy {
         val logging = HttpLoggingInterceptor { message ->
             Log.d("StravaAPI", message)
@@ -62,7 +67,7 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
 
         if (accessToken.isNotBlank()) {
             val now = System.currentTimeMillis() / 1000
-            if (now < expiresAt - 600) { // If token is valid for at least 10 more minutes
+            if (now < expiresAt - 600) {
                 fetchActivitiesWithToken(accessToken)
                 fetchProfile(accessToken)
             } else if (refreshToken.isNotBlank()) {
@@ -140,8 +145,7 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
             _error.value = null
             try {
                 val response = stravaApi.getActivities(authHeader, perPage = 200)
-                _activities.value = response
-                
+
                 if (prefs.getString("access_token", "") != trimmedToken) {
                     prefs.edit().putString("access_token", trimmedToken).apply()
                     _savedToken.value = trimmedToken
@@ -149,7 +153,35 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
 
                 if (response.isEmpty()) {
                     _error.value = "No activities found."
+                    _activities.value = emptyList()
+                    return@launch
                 }
+
+                // Publish the list immediately so the UI is responsive
+                _activities.value = response
+
+                // Then fetch full details for the most recent DETAIL_FETCH_LIMIT activities
+                // to populate calories (not available in the list endpoint)
+                val detailedActivities = response
+                    .take(DETAIL_FETCH_LIMIT)
+                    .map { activity ->
+                        async {
+                            try {
+                                stravaApi.getActivityDetail(authHeader, activity.id)
+                            } catch (e: Exception) {
+                                Log.e("StravaViewModel", "Failed to fetch detail for ${activity.id}", e)
+                                activity // Fall back to the original if detail fetch fails
+                            }
+                        }
+                    }
+                    .awaitAll()
+
+                // Merge detailed activities back into the full list
+                val detailMap = detailedActivities.associateBy { it.id }
+                _activities.value = response.map { activity ->
+                    detailMap[activity.id] ?: activity
+                }
+
             } catch (e: HttpException) {
                 if (e.code() == 401) {
                     val refreshToken = prefs.getString("refresh_token", "") ?: ""

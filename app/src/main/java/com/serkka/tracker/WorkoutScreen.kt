@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -719,6 +720,34 @@ fun WorkoutScreen(
             floatingActionButtonPosition = FabPosition.Center
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
+                // SummaryPage is always kept in composition so it is never destroyed on
+                // navigation, preserving scroll position and avoiding unnecessary refetches.
+                // Animated alpha gives the same fade-in/out feel as the other screens.
+                val summaryAlpha by animateFloatAsState(
+                    targetValue = if (currentScreen == Screen.Summary) 1f else 0f,
+                    animationSpec = tween(300),
+                    label = "SummaryAlpha"
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = summaryAlpha }
+                ) {
+                    SummaryPage(
+                        workouts = workouts,
+                        bodyWeights = bodyWeights,
+                        stravaViewModel = stravaViewModel,
+                        primaryColor = primaryColor,
+                        onWorkoutEdit = { editingWorkout = it },
+                        onWorkoutDelete = { workoutToDelete = it },
+                        onWorkoutCopy = { copyingWorkout = it },
+                        onNavigateToWeightTracking = { currentScreen = Screen.WeightTracking },
+                        listState = summaryListState
+                    )
+                }
+
+                // All other screens use AnimatedContent as before.
+                // The Summary case is an empty Box — SummaryPage above handles that slot.
                 AnimatedContent(
                     targetState = currentScreen,
                     transitionSpec = {
@@ -728,6 +757,7 @@ fun WorkoutScreen(
                     label = "ScreenTransition"
                 ) { targetScreen ->
                     when (targetScreen) {
+                        Screen.Summary -> Box(Modifier.fillMaxSize()) // rendered above, always alive
                         Screen.Workouts -> {
                             WorkoutListContent(
                                 workouts = workouts,
@@ -760,19 +790,6 @@ fun WorkoutScreen(
                                 onNoteClick = { editingNote = it },
                                 onNoteDelete = { noteToDelete = it },
                                 listState = notesListState
-                            )
-                        }
-                        Screen.Summary -> {
-                            SummaryPage(
-                                workouts = workouts,
-                                bodyWeights = bodyWeights,
-                                stravaViewModel = stravaViewModel,
-                                primaryColor = primaryColor,
-                                onWorkoutEdit = { editingWorkout = it },
-                                onWorkoutDelete = { workoutToDelete = it },
-                                onWorkoutCopy = { copyingWorkout = it },
-                                onNavigateToWeightTracking = { currentScreen = Screen.WeightTracking },
-                                listState = summaryListState
                             )
                         }
                         Screen.Settings -> {
@@ -983,10 +1000,10 @@ fun SummaryPage(
     val activities by stravaViewModel.activities.collectAsState()
     val isLoading by stravaViewModel.isLoading.collectAsState()
     var refreshTrigger by remember { mutableStateOf(false) }
-    
+
     // Sync refresh state with ViewModel loading state
     val isRefreshing = refreshTrigger && isLoading
-    
+
     LaunchedEffect(isLoading) {
         if (!isLoading && refreshTrigger) {
             refreshTrigger = false
@@ -1018,7 +1035,7 @@ fun SummaryPage(
 
     val recentActivities = remember(activities) {
         val twoDaysAgo = today.minusDays(6)
-        
+
         activities.filter { activity ->
             val activityDate = LocalDate.parse(activity.startDate.substringBefore("T"))
             !activityDate.isBefore(twoDaysAgo) && !activityDate.isAfter(today)
@@ -1112,14 +1129,14 @@ fun SummaryPage(
                     color = primaryColor,
                     fontWeight = FontWeight.Bold
                 )
-                
+
                 // Get last 7 days of weight data
                 val weekWeights = remember(bodyWeights) {
                     val today = LocalDate.now()
                     val twoDaysAgo = today.minusDays(13)
-                    
+
                     bodyWeights
-                        .filter { 
+                        .filter {
                             val weightDate = Instant.ofEpochMilli(it.date)
                                 .atZone(ZoneId.systemDefault())
                                 .toLocalDate()
@@ -1150,7 +1167,7 @@ fun SummaryPage(
                                 text = "${formatWeight(lastWeight.weight)} kg",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = primaryColor
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -1159,12 +1176,12 @@ fun SummaryPage(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        
+
                         // Right side - Mini graph with background
                         if (weekWeights.size >= 2) {
                             val surfaceColor = MaterialTheme.colorScheme.surface
                             val trend = weekWeights.last().weight - weekWeights.first().weight
-                            
+
                             Box(
                                 modifier = Modifier
                                     .width(150.dp)
@@ -1186,17 +1203,17 @@ fun SummaryPage(
                                     val minWeight = weights.minOrNull() ?: 0f
                                     val maxWeight = weights.maxOrNull() ?: 100f
                                     val range = (maxWeight - minWeight).coerceAtLeast(1f)
-                                    
+
                                     val graphWidth = size.width
                                     val graphHeight = size.height
                                     val spacing = graphWidth / (weights.size - 1).coerceAtLeast(1)
-                                    
+
                                     // Draw gradient fill under the line
                                     val fillPath = Path()
                                     weights.forEachIndexed { index, weight ->
                                         val x = index * spacing
                                         val y = graphHeight - ((weight - minWeight) / range * graphHeight)
-                                        
+
                                         if (index == 0) {
                                             fillPath.moveTo(x, graphHeight)
                                             fillPath.lineTo(x, y)
@@ -1206,27 +1223,27 @@ fun SummaryPage(
                                     }
                                     fillPath.lineTo(graphWidth, graphHeight)
                                     fillPath.close()
-                                    
+
                                     drawPath(
                                         path = fillPath,
                                         brush = Brush.verticalGradient(
                                             colors = listOf(primaryColor.copy(alpha = 0.2f * animationProgress.value), Color.Transparent)
                                         )
                                     )
-                                    
+
                                     // Draw line path
                                     val linePath = Path()
                                     weights.forEachIndexed { index, weight ->
                                         val x = index * spacing
                                         val y = graphHeight - ((weight - minWeight) / range * graphHeight)
-                                        
+
                                         if (index == 0) {
                                             linePath.moveTo(x, y)
                                         } else {
                                             linePath.lineTo(x, y)
                                         }
                                     }
-                                    
+
                                     // Draw the line
                                     drawPath(
                                         path = linePath,
@@ -1239,7 +1256,7 @@ fun SummaryPage(
                                     weights.forEachIndexed { index, weight ->
                                         val x = index * spacing
                                         val y = graphHeight - ((weight - minWeight) / range * graphHeight)
-                                        
+
                                         // Outer circle (white background) - animated
                                         drawCircle(
                                             color = surfaceColor,
@@ -1254,7 +1271,7 @@ fun SummaryPage(
                                         )
                                     }
                                 }
-                                
+
                                 // Trend indicator overlay at top left
                                 Row(
                                     modifier = Modifier
@@ -1375,24 +1392,31 @@ fun SummaryPage(
                                             )
                                         }
                                     }
-                                    
+
                                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Straighten,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(14.dp),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                            )
-                                            Text(
-                                                text = "${String.format(Locale.getDefault(), "%.2f", activity.distance / 1000f)} km",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
+                                        if (activity.distance != 0f || activity.calories != 0f) {
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (activity.distance == 0f) Icons.Default.LocalFireDepartment else Icons.Default.Straighten,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(14.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                                )
+                                                Text(
+                                                    text = if (activity.distance == 0f) {
+                                                        "${activity.calories.toInt()} kcal"
+                                                    } else {
+                                                        "${String.format(Locale.getDefault(), "%.1f", activity.distance / 1000f)} km"
+                                                    },
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
                                         }
+
                                         Row(
                                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                                             verticalAlignment = Alignment.CenterVertically
@@ -1416,11 +1440,12 @@ fun SummaryPage(
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
+
                                     }
                                 }
                             }
                         }
-                        
+
                         // If odd number of activities, add spacer for alignment
                         if (activityPair.size == 1) {
                             Spacer(modifier = Modifier.weight(1f))
@@ -1813,7 +1838,7 @@ fun WorkoutListContent(
                     )
                 }
             }
-            
+
             // Display workouts in 2-column grid
             items(workoutsInDay.chunked(2), key = { pair -> pair.first().id }) { workoutPair ->
                 Row(
@@ -1864,10 +1889,10 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
     val error by stravaViewModel.error.collectAsState()
     val profilePicUrl by stravaViewModel.profilePicUrl.collectAsState()
     var refreshTrigger by remember { mutableStateOf(false) }
-    
+
     // Sync refresh state with ViewModel loading state
     val isRefreshing = refreshTrigger && isLoading
-    
+
     LaunchedEffect(isLoading) {
         if (!isLoading && refreshTrigger) {
             refreshTrigger = false
