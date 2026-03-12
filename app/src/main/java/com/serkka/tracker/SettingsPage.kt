@@ -179,7 +179,7 @@ fun SettingsPage(
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth().animateContentSize(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
                 elevation = CardDefaults.cardElevation(
                     defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp
@@ -232,7 +232,7 @@ fun SettingsPage(
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth().animateContentSize(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
                 elevation = CardDefaults.cardElevation(
                     defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp

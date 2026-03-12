@@ -68,7 +68,7 @@ fun WeightTrackingPage(
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth().animateContentSize().padding(bottom = 16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
                     elevation = CardDefaults.cardElevation(
                         defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp
@@ -101,7 +101,7 @@ fun WeightTrackingPage(
                                     val sign = if (rate >= 0) "+" else ""
                                     Text(
                                         "$sign${String.format(Locale.getDefault(), "%.2f", rate)} kg/week",
-                                        color = if (rate <= 0) Color.Green else Color.Red,
+                                        color = if (rate <= 0) Color(0xFF46CE46).copy(alpha = 0.8f) else Color(0xFFEE3E3E).copy(alpha = 0.8f),
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -145,7 +145,7 @@ fun WeightTrackingPage(
                         .animateItem()
                         .clickable { onWeightClick(weightEntry) },
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
                     elevation = CardDefaults.cardElevation(
                         defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp

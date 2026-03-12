@@ -110,7 +110,7 @@ fun SummaryPage(
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth().animateContentSize(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
                     elevation = CardDefaults.cardElevation(
                         defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp
@@ -192,7 +192,7 @@ fun SummaryPage(
                             .padding(top = 8.dp)
                             .clickable { onNavigateToWeightTracking() },
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
                         ),
                         elevation = CardDefaults.cardElevation(
                             defaultElevation = 10.dp, pressedElevation = 6.dp, hoveredElevation = 12.dp
@@ -288,7 +288,7 @@ fun SummaryPage(
                                             .align(Alignment.TopStart)
                                             .background(
                                                 color = when {
-                                                    trend > 0.1f  -> Color(0xFFDE4A4A).copy(alpha = 0.8f)
+                                                    trend > 0.1f  -> Color(0xFFEE3E3E).copy(alpha = 0.8f)
                                                     trend < -0.1f -> Color(0xFF46CE46).copy(alpha = 0.8f)
                                                     else          -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                                                 },
@@ -358,7 +358,7 @@ fun SummaryPage(
                             ElevatedCard(
                                 modifier = Modifier.weight(1f).animateContentSize().height(100.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainer
                                 ),
                                 elevation = CardDefaults.cardElevation(
                                     defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp

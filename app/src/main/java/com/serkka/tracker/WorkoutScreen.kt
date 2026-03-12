@@ -45,6 +45,7 @@ fun WorkoutScreen(
     stravaViewModel: StravaViewModel = viewModel(),
     themeViewModel: ThemeViewModel = viewModel(),
     timerViewModel: WorkoutTimerViewModel = viewModel()
+
 ) {
     val coroutineScope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -231,8 +232,8 @@ fun WorkoutScreen(
             bottomBar = {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 3.dp,
-                    contentColor = MaterialTheme.colorScheme.onSurface
+                    tonalElevation = 4.dp,
+                    contentColor = primaryColor,
                 ) {
                     Spacer(modifier = Modifier.width(4.dp))
                     NavigationBarItem(
@@ -286,7 +287,7 @@ fun WorkoutScreen(
                         Surface(
                             color = MaterialTheme.colorScheme.surface,
                             shape = MaterialTheme.shapes.large,
-                            tonalElevation = 2.dp,
+                            tonalElevation = 4.dp,
                             shadowElevation = 4.dp,
                             modifier = Modifier
                                 .weight(1f)

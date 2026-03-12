@@ -73,7 +73,7 @@ fun WorkoutListContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp)
+                        .padding(horizontal = 12.dp)
                         .height(IntrinsicSize.Max),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -124,7 +124,7 @@ fun WorkoutCard(
                 }
             ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 12.dp, pressedElevation = 6.dp, hoveredElevation = 14.dp

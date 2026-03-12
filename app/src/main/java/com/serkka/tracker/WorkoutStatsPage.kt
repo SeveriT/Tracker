@@ -44,7 +44,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth().animateContentSize().padding(bottom = 16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
                 elevation = CardDefaults.cardElevation(
                     defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp
@@ -88,7 +88,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth().animateContentSize().padding(vertical = 4.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
                 ),
                 elevation = CardDefaults.cardElevation(
                     defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp

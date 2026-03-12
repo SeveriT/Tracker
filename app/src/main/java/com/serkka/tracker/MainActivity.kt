@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val primaryColor by themeViewModel.primaryColor.collectAsState()
 
-            GymTrackerTheme(dynamicColor = false, primaryColor = primaryColor) {
+            TrackerTheme(primaryColor = primaryColor) {
                 // 4. Create the WorkoutViewModel using a Factory
                 val workoutViewModel: WorkoutViewModel = viewModel(
                     factory = object : ViewModelProvider.Factory {
