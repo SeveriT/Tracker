@@ -67,7 +67,6 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.serkka.tracker.ui.theme.DarkSurfaceColor
-import com.serkka.tracker.ui.theme.DarkWidgetColor
 import com.serkka.tracker.ui.theme.PersonalBestGold
 import com.serkka.tracker.ui.theme.PBGlow
 import kotlinx.coroutines.Dispatchers
@@ -91,6 +90,10 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 
 
 enum class Screen {
@@ -181,7 +184,9 @@ fun WorkoutScreen(
     val coroutineScope = rememberCoroutineScope()
     val backupManager = remember { BackupManager(context) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    var currentScreen by remember { mutableStateOf(Screen.Summary) }
+    val navController = rememberNavController()
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route ?: Screen.Summary.name
     
     // LazyListStates for different screens
     val workoutsListState = rememberLazyListState()
@@ -192,11 +197,11 @@ fun WorkoutScreen(
     // Track if FAB should be visible based on scroll
     val isFabVisible by remember {
         derivedStateOf {
-            val currentListState = when (currentScreen) {
-                Screen.Workouts -> workoutsListState
-                Screen.Summary -> summaryListState
-                Screen.WeightTracking -> weightListState
-                Screen.Notes -> notesListState
+            val currentListState = when (currentRoute) {
+                Screen.Workouts.name -> workoutsListState
+                Screen.Summary.name -> summaryListState
+                Screen.WeightTracking.name -> weightListState
+                Screen.Notes.name -> notesListState
                 else -> null
             }
             (currentListState?.firstVisibleItemIndex ?: 0) <= 2
@@ -349,9 +354,9 @@ fun WorkoutScreen(
                 NavigationDrawerItem(
                     label = { Text("Workout Stats", modifier = Modifier.padding(start = 8.dp)) },
                     icon = { Icon(Icons.Default.BarChart, null) },
-                    selected = currentScreen == Screen.WorkoutStats,
+                    selected = currentRoute == Screen.WorkoutStats.name,
                     onClick = {
-                        currentScreen = Screen.WorkoutStats
+                        navController.navigate(Screen.WorkoutStats.name)
                         coroutineScope.launch { drawerState.close() }
                     },
                     colors = NavigationDrawerItemDefaults.colors(
@@ -370,9 +375,9 @@ fun WorkoutScreen(
                 NavigationDrawerItem(
                     label = { Text("Notes", modifier = Modifier.padding(start = 8.dp)) },
                     icon = { Icon(Icons.AutoMirrored.Filled.Notes, null) },
-                    selected = currentScreen == Screen.Notes,
+                    selected = currentRoute == Screen.Notes.name,
                     onClick = {
-                        currentScreen = Screen.Notes
+                        navController.navigate(Screen.Notes.name)
                         coroutineScope.launch { drawerState.close() }
                     },
                     colors = NavigationDrawerItemDefaults.colors(
@@ -398,9 +403,9 @@ fun WorkoutScreen(
                 NavigationDrawerItem(
                     label = { Text("Settings", modifier = Modifier.padding(start = 8.dp)) },
                     icon = { Icon(Icons.Default.Settings, null) },
-                    selected = currentScreen == Screen.Settings,
+                    selected = currentRoute == Screen.Settings.name,
                     onClick = {
-                        currentScreen = Screen.Settings
+                        navController.navigate(Screen.Settings.name)
                         coroutineScope.launch { drawerState.close() }
                     },
                     colors = NavigationDrawerItemDefaults.colors(
@@ -423,27 +428,28 @@ fun WorkoutScreen(
                 TopAppBar(
                     title = {
                         Text(modifier = Modifier.padding(start = 8.dp),
-                            text = when (currentScreen) {
-                                Screen.Workouts -> "Workouts"
-                                Screen.StravaCalendar -> "Strava Calendar"
-                                Screen.WeightTracking -> "Weight Tracking"
-                                Screen.WorkoutStats -> "Workout Stats"
-                                Screen.Notes -> "Notes"
-                                Screen.Summary -> "Weekly Summary"
-                                Screen.Settings -> "Settings"
-                                Screen.WorkoutTimer -> "Workout Timer"
+                            text = when (currentRoute) {
+                                Screen.Workouts.name -> "Workouts"
+                                Screen.StravaCalendar.name -> "Strava Calendar"
+                                Screen.WeightTracking.name -> "Weight Tracking"
+                                Screen.WorkoutStats.name -> "Workout Stats"
+                                Screen.Notes.name -> "Notes"
+                                Screen.Summary.name -> "Weekly Summary"
+                                Screen.Settings.name -> "Settings"
+                                Screen.WorkoutTimer.name -> "Workout Timer"
+                                else -> ""
                             }
                         )
                     },
                     actions = {
                         // ── Live timer pill (visible on every screen except the timer itself) ──
                         AnimatedVisibility(
-                            visible = timerIsRunning && currentScreen != Screen.WorkoutTimer,
+                            visible = timerIsRunning && currentRoute != Screen.WorkoutTimer.name,
                             enter = fadeIn() + slideInHorizontally { it },
                             exit = fadeOut() + slideOutHorizontally { it }
                         ) {
                             AssistChip(
-                                onClick = { currentScreen = Screen.WorkoutTimer },
+                                onClick = { navController.navigate(Screen.WorkoutTimer.name) },
                                 label = {
                                     Text(
                                         text = formatElapsed(timerElapsed),
@@ -466,14 +472,14 @@ fun WorkoutScreen(
                                 modifier = Modifier.padding(end = 4.dp)
                             )
                         }
-                        IconButton(onClick = { currentScreen = Screen.Notes }) {
+                        IconButton(onClick = { navController.navigate(Screen.Notes.name) }) {
                             Icon(
                                 imageVector = Icons.Default.Notes,
                                 contentDescription = "Notes",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                        IconButton(onClick = { currentScreen = Screen.Settings }) {
+                        IconButton(onClick = { navController.navigate(Screen.Settings.name) }) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = "Settings",
@@ -502,36 +508,36 @@ fun WorkoutScreen(
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
                         label = { Text("Strava") },
-                        selected = currentScreen == Screen.StravaCalendar,
-                        onClick = { currentScreen = Screen.StravaCalendar },
+                        selected = currentRoute == Screen.StravaCalendar.name,
+                        onClick = { navController.navigate(Screen.StravaCalendar.name) },
                         colors = navBarColors
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.FitnessCenter, contentDescription = null) },
                         label = { Text("Workouts") },
-                        selected = currentScreen == Screen.Workouts,
-                        onClick = { currentScreen = Screen.Workouts },
+                        selected = currentRoute == Screen.Workouts.name,
+                        onClick = { navController.navigate(Screen.Workouts.name) },
                         colors = navBarColors
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Dashboard, contentDescription = null) },
                         label = { Text("Summary") },
-                        selected = currentScreen == Screen.Summary,
-                        onClick = { currentScreen = Screen.Summary },
+                        selected = currentRoute == Screen.Summary.name,
+                        onClick = { navController.navigate(Screen.Summary.name) },
                         colors = navBarColors
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.MonitorWeight, contentDescription = null) },
                         label = { Text("Weight") },
-                        selected = currentScreen == Screen.WeightTracking,
-                        onClick = { currentScreen = Screen.WeightTracking },
+                        selected = currentRoute == Screen.WeightTracking.name,
+                        onClick = { navController.navigate(Screen.WeightTracking.name) },
                         colors = navBarColors
                     )
                     NavigationBarItem(
                         icon     = { Icon(Icons.Default.Timer, null) },
                         label    = { Text("Timer") },
-                        selected = currentScreen == Screen.WorkoutTimer,
-                        onClick  = { currentScreen = Screen.WorkoutTimer },
+                        selected = currentRoute == Screen.WorkoutTimer.name,
+                        onClick  = { navController.navigate(Screen.WorkoutTimer.name) },
                         colors = navBarColors
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -547,13 +553,13 @@ fun WorkoutScreen(
                     // Only show if song is from Spotify
                     if (currentSong.title != null && currentSong.packageName == "com.spotify.music") {
                         Surface(
-                            color = DarkWidgetColor,
+                            color = MaterialTheme.colorScheme.surface,
                             shape = MaterialTheme.shapes.large,
                             tonalElevation = 2.dp,
                             shadowElevation = 4.dp,
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(end = if (isFabVisible && (currentScreen == Screen.Workouts || currentScreen == Screen.WeightTracking || currentScreen == Screen.Notes)) 16.dp else 0.dp)
+                                .padding(end = if (isFabVisible && (currentRoute == Screen.Workouts.name || currentRoute == Screen.WeightTracking.name || currentRoute == Screen.Notes.name)) 16.dp else 0.dp)
                         ) {
                             Column(
                                 modifier = Modifier.fillMaxWidth()
@@ -651,8 +657,8 @@ fun WorkoutScreen(
                                         },
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(bottom = 8.dp)
-                                            .height(3.dp)
+                                            .padding(bottom = 10.dp)
+                                            .height(4.dp)
                                             .clip(RoundedCornerShape(2.dp)),
                                         color = primaryColor,
                                         trackColor = DarkSurfaceColor,
@@ -669,36 +675,36 @@ fun WorkoutScreen(
                         enter = fadeIn() + scaleIn(),
                         exit = fadeOut() + scaleOut()
                     ) {
-                        if (currentScreen == Screen.Workouts) {
+                        if (currentRoute == Screen.Workouts.name) {
                             FloatingActionButton(
                                 onClick = { showAddWorkoutDialog = true },
-                                containerColor = DarkWidgetColor,
+                                containerColor = MaterialTheme.colorScheme.surface,
                                 contentColor = primaryColor,
                                 elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                                modifier = Modifier.size(67.dp)
+                                modifier = Modifier.size(70.dp)
                             ) {
                                 Icon(Icons.Default.Add, "Add Workout", modifier = Modifier.size(32.dp))
                             }
-                        } else if (currentScreen == Screen.WeightTracking) {
+                        } else if (currentRoute == Screen.WeightTracking.name) {
                             FloatingActionButton(
                                 onClick = {
                                     viewModel.prepareNewEntry()
                                     showAddWeightDialog = true
                                 },
-                                containerColor = DarkWidgetColor,
+                                containerColor = MaterialTheme.colorScheme.surface,
                                 contentColor = primaryColor,
                                 elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                                modifier = Modifier.size(67.dp)
+                                modifier = Modifier.size(70.dp)
                             ) {
                                 Icon(Icons.Default.MonitorWeight, "Add Weight")
                             }
-                        } else if (currentScreen == Screen.Notes) {
+                        } else if (currentRoute == Screen.Notes.name) {
                             FloatingActionButton(
                                 onClick = { showAddNoteDialog = true },
-                                containerColor = DarkWidgetColor,
+                                containerColor = MaterialTheme.colorScheme.surface,
                                 contentColor = primaryColor,
                                 elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                                modifier = Modifier.size(67.dp)                            ) {
+                                modifier = Modifier.size(70.dp)                            ) {
                                 Icon(Icons.Default.Add, "Add Note", modifier = Modifier.size(32.dp))
                             }
                         }
@@ -707,20 +713,14 @@ fun WorkoutScreen(
             },
             floatingActionButtonPosition = FabPosition.Center
         ) { innerPadding ->
-            Box(modifier = Modifier.padding(innerPadding)) {
-                // SummaryPage is always kept in composition so it is never destroyed on
-                // navigation, preserving scroll position and avoiding unnecessary refetches.
-                // Animated alpha gives the same fade-in/out feel as the other screens.
-                val summaryAlpha by animateFloatAsState(
-                    targetValue = if (currentScreen == Screen.Summary) 1f else 0f,
-                    animationSpec = tween(300),
-                    label = "SummaryAlpha"
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = summaryAlpha }
-                ) {
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Summary.name,
+                modifier = Modifier.padding(innerPadding),
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) }
+            ) {
+                composable(Screen.Summary.name) {
                     SummaryPage(
                         workouts = workouts,
                         bodyWeights = bodyWeights,
@@ -729,77 +729,65 @@ fun WorkoutScreen(
                         onWorkoutEdit = { editingWorkout = it },
                         onWorkoutDelete = { workoutToDelete = it },
                         onWorkoutCopy = { copyingWorkout = it },
-                        onNavigateToWeightTracking = { currentScreen = Screen.WeightTracking },
+                        onNavigateToWeightTracking = { navController.navigate(Screen.WeightTracking.name) },
                         listState = summaryListState
                     )
                 }
-
-                // All other screens use AnimatedContent as before.
-                // The Summary case is an empty Box — SummaryPage above handles that slot.
-                AnimatedContent(
-                    targetState = currentScreen,
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(300)) togetherWith
-                        fadeOut(animationSpec = tween(300))
-                    },
-                    label = "ScreenTransition"
-                ) { targetScreen ->
-                    when (targetScreen) {
-                        Screen.Summary -> Box(Modifier.fillMaxSize()) // rendered above, always alive
-                        Screen.Workouts -> {
-                            WorkoutListContent(
-                                workouts = workouts,
-                                primaryColor = primaryColor,
-                                onDelete = { workoutToDelete = it },
-                                onEdit = { editingWorkout = it },
-                                onCopy = { copyingWorkout = it },
-                                listState = workoutsListState
-                            )
-                        }
-                        Screen.StravaCalendar -> {
-                            StravaCalendarPage(stravaViewModel, primaryColor)
-                        }
-                        Screen.WeightTracking -> {
-                            WeightTrackingPage(
-                                bodyWeights = bodyWeights,
-                                primaryColor = primaryColor,
-                                onWeightClick = { editingWeight = it },
-                                onWeightDelete = { weightToDelete = it },
-                                listState = weightListState
-                            )
-                        }
-                        Screen.WorkoutStats -> {
-                            WorkoutStatsPage(workouts, primaryColor)
-                        }
-                        Screen.Notes -> {
-                            NotesPage(
-                                notes = notesList,
-                                primaryColor = primaryColor,
-                                onNoteClick = { editingNote = it },
-                                onNoteDelete = { noteToDelete = it },
-                                listState = notesListState
-                            )
-                        }
-                        Screen.Settings -> {
-                            SettingsPage(
-                                primaryColor = primaryColor,
-                                themeViewModel = themeViewModel,
-                                stravaViewModel = stravaViewModel,
-                                viewModel = viewModel,
-                                performDriveBackup = performDriveBackup,
-                                backupLauncher = backupLauncher,
-                                restoreLauncher = restoreLauncher,
-                                googleSignInClient = googleSignInClient,
-                                context = context
-                            )
-                        }
-                        Screen.WorkoutTimer -> {
-                            WorkoutTimerScreen(
-                                timerViewModel  = timerViewModel,
-                                stravaViewModel = stravaViewModel
-                            )
-                        }
-                    }
+                composable(Screen.Workouts.name) {
+                    WorkoutListContent(
+                        workouts = workouts,
+                        primaryColor = primaryColor,
+                        onDelete = { workoutToDelete = it },
+                        onEdit = { editingWorkout = it },
+                        onCopy = { copyingWorkout = it },
+                        listState = workoutsListState
+                    )
+                }
+                composable(Screen.StravaCalendar.name) {
+                    StravaCalendarPage(stravaViewModel, primaryColor)
+                }
+                composable(Screen.WeightTracking.name) {
+                    WeightTrackingPage(
+                        bodyWeights = bodyWeights,
+                        primaryColor = primaryColor,
+                        onWeightClick = { editingWeight = it },
+                        onWeightDelete = { weightToDelete = it },
+                        listState = weightListState
+                    )
+                }
+                composable(Screen.WorkoutStats.name) {
+                    WorkoutStatsPage(workouts, primaryColor)
+                }
+                composable(Screen.Notes.name) {
+                    NotesPage(
+                        notes = notesList,
+                        primaryColor = primaryColor,
+                        onNoteClick = { editingNote = it },
+                        onNoteDelete = { noteToDelete = it },
+                        listState = notesListState
+                    )
+                }
+                composable(Screen.Settings.name) {
+                    SettingsPage(
+                        primaryColor = primaryColor,
+                        themeViewModel = themeViewModel,
+                        stravaViewModel = stravaViewModel,
+                        viewModel = viewModel,
+                        performDriveBackup = performDriveBackup,
+                        backupLauncher = backupLauncher,
+                        restoreLauncher = restoreLauncher,
+                        googleSignInClient = googleSignInClient,
+                        context = context
+                    )
+                }
+                composable(Screen.WorkoutTimer.name) {
+                    val musicVisible = currentSong.title != null &&
+                        currentSong.packageName == "com.spotify.music"
+                    WorkoutTimerScreen(
+                        timerViewModel  = timerViewModel,
+                        stravaViewModel = stravaViewModel,
+                        bottomPadding   = if (musicVisible) 88.dp else 0.dp
+                    )
                 }
             }
 
@@ -1058,7 +1046,7 @@ fun SummaryPage(
                 modifier = Modifier.
                 fillMaxWidth()
                 .animateContentSize(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
             ) {
                 Column(
@@ -1145,7 +1133,7 @@ fun SummaryPage(
                         .animateContentSize()
                         .padding(top = 8.dp)
                         .clickable { onNavigateToWeightTracking() },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 10.dp, pressedElevation = 6.dp, hoveredElevation = 12.dp)
                 ) {
                     Row(
@@ -1344,7 +1332,7 @@ fun SummaryPage(
                                     .weight(1f)
                                     .animateContentSize()
                                     .height(100.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
                             ) {
                                 Column(
@@ -1468,19 +1456,36 @@ fun SummaryPage(
                 )
             }
         } else {
-            items(todaysWorkouts) { workout ->
-                WorkoutCard(
-                    workout = workout,
-                    primaryColor = primaryColor,
-                    onEdit = { onWorkoutEdit(workout) },
-                    onDelete = { onWorkoutDelete(workout) },
-                    onCopy = { onWorkoutCopy(workout) }
-                )
+            item {
+                Column {
+                    todaysWorkouts.chunked(2).forEach { pair ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Max),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            pair.forEach { workout ->
+                                WorkoutCard(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
+                                    workout = workout,
+                                    primaryColor = primaryColor,
+                                    onEdit = { onWorkoutEdit(workout) },
+                                    onDelete = { onWorkoutDelete(workout) },
+                                    onCopy = { onWorkoutCopy(workout) }
+                                )
+                            }
+                            if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
             }
         }
 
         item {
-            Spacer(modifier = Modifier.height(70.dp))
+            Spacer(modifier = Modifier.height(65.dp))
             }
         }
     }
@@ -1511,7 +1516,7 @@ fun WorkoutCard(
                     onCopy()
                 }
             ),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp, pressedElevation = 6.dp, hoveredElevation = 14.dp)
     ) {
             Column(
@@ -1823,7 +1828,7 @@ fun WorkoutListContent(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 85.dp)
+        contentPadding = PaddingValues(bottom = 95.dp)
     ) {
         groupedWorkouts.forEach { (date, workoutsInDay) ->
             stickyHeader {
@@ -1846,9 +1851,9 @@ fun WorkoutListContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 8.dp)
                         .height(IntrinsicSize.Max),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     workoutPair.forEach { workout ->
                         WorkoutCard(
@@ -1954,7 +1959,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                         .fillMaxWidth()
                         .animateContentSize()
                         .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
                 ) {
                     Row(
@@ -2000,7 +2005,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
             }
 
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(70.dp))
             }
         }
     }
@@ -2266,7 +2271,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                     .fillMaxWidth()
                     .animateContentSize()
                     .padding(bottom = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
             ) {
                 Column(
@@ -2309,7 +2314,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
                     .fillMaxWidth()
                     .animateContentSize()
                     .padding(vertical = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -2354,7 +2359,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
         }
 
         item {
-            Spacer(modifier = Modifier.height(70.dp))
+            Spacer(modifier = Modifier.height(75.dp))
         }
     }
 }
@@ -2397,7 +2402,7 @@ fun WeightTrackingPage(
                         .fillMaxWidth()
                         .animateContentSize()
                         .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -2446,7 +2451,7 @@ fun WeightTrackingPage(
                         .animateContentSize()
                         .animateItem()
                         .clickable { onWeightClick(weightEntry) },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
                 ) {
                     Row(
@@ -2487,7 +2492,7 @@ fun WeightTrackingPage(
         }
 
         item {
-            Spacer(modifier = Modifier.height(70.dp))
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
@@ -2646,7 +2651,7 @@ fun NotesPage(
                         .animateContentSize()
                         .animateItem()
                         .clickable { onNoteClick(note) },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
                 ) {
                     Row(
@@ -2690,7 +2695,7 @@ fun NotesPage(
             }
         }
         item {
-            Spacer(modifier = Modifier.height(70.dp))
+            Spacer(modifier = Modifier.height(75.dp))
         }
     }
 }
@@ -2780,10 +2785,6 @@ fun NoteDialog(
     )
 }
 
-
-// ---------------------------------------------------------------------------
-// Next-backup countdown widget — shown in the Settings backup card
-// ---------------------------------------------------------------------------
 
 private const val BACKUP_INTERVAL_MS = 24L * 60 * 60 * 1000  // 24 hours
 
@@ -2892,7 +2893,7 @@ fun SettingsPage(
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth()
                 .animateContentSize(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
             ) {
                 Column(
@@ -3000,7 +3001,7 @@ fun SettingsPage(
                 modifier = Modifier.
                 fillMaxWidth()
                 .animateContentSize(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.6f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(0.8f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp)
             ) {
                 Column(

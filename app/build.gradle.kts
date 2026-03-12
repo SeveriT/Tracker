@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
+    implementation("androidx.navigation:navigation-compose:2.8.9")
     
     // Room Database
     implementation(libs.androidx.room.runtime)
