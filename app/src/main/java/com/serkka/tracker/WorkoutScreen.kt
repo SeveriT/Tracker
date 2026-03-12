@@ -205,9 +205,9 @@ fun WorkoutScreen(
                                     Icon(Icons.Default.Timer, contentDescription = "Timer running", modifier = Modifier.size(16.dp))
                                 },
                                 colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    leadingIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 ),
                                 modifier = Modifier.padding(end = 4.dp)
                             )

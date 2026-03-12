@@ -264,10 +264,14 @@ fun SettingsPage(
                             modifier = Modifier.weight(1f)
                         )
                         SettingsButton(
-                            label = "Local Backup",
-                            icon = Icons.Default.Save,
+                            label = "Google Sign Out",
+                            icon = Icons.AutoMirrored.Filled.Logout,
                             containerColor = primaryColor,
-                            onClick = { backupLauncher.launch("workout_backup.db") },
+                            onClick = {
+                                googleSignInClient.signOut().addOnCompleteListener {
+                                    Toast.makeText(context, "Google signed out", Toast.LENGTH_SHORT).show()
+                                }
+                            },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -278,21 +282,17 @@ fun SettingsPage(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         SettingsButton(
+                            label = "Local Backup",
+                            icon = Icons.Default.Save,
+                            containerColor = primaryColor,
+                            onClick = { backupLauncher.launch("workout_backup.db") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        SettingsButton(
                             label = "Restore Data",
                             icon = Icons.Default.SettingsBackupRestore,
                             containerColor = primaryColor,
                             onClick = { restoreLauncher.launch(arrayOf("*/*")) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        SettingsButton(
-                            label = "Google Sign Out",
-                            icon = Icons.AutoMirrored.Filled.Logout,
-                            containerColor = MaterialTheme.colorScheme.error,
-                            onClick = {
-                                googleSignInClient.signOut().addOnCompleteListener {
-                                    Toast.makeText(context, "Google signed out", Toast.LENGTH_SHORT).show()
-                                }
-                            },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -347,8 +347,8 @@ fun SettingsPage(
                         SettingsButton(
                             label = "Clear All Data",
                             icon = Icons.Default.DeleteForever,
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = Color.Red,
+                            containerColor = Color(0xFFEE3E3E).copy(alpha = 0.8f),
+                            contentColor = Color.Black,
                             onClick = { showDeleteConfirmDialog = true },
                             modifier = Modifier.weight(1f)
                         )
