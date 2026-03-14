@@ -1,6 +1,8 @@
 package com.serkka.tracker
 
+import android.Manifest
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -24,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.app.ActivityCompat
 
 
 class MainActivity : ComponentActivity() {
@@ -46,6 +49,24 @@ class MainActivity : ComponentActivity() {
 
         // 3. Schedule Automatic Backup
         scheduleBackup()
+
+        val timerViewModel = ViewModelProvider(
+            this,
+            object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return WorkoutTimerViewModel(application) as T
+                }
+            }
+        )[WorkoutTimerViewModel::class.java]
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                0
+            )
+        }
 
         setContent {
             val primaryColor by themeViewModel.primaryColor.collectAsState()

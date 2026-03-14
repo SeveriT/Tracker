@@ -3,49 +3,123 @@
 package com.serkka.tracker
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.launch
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.serkka.tracker.ui.theme.DarkSurfaceColor
+import kotlinx.coroutines.launch
+import kotlin.math.sin
+
+
+@Composable
+fun WavyProgressIndicator(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primary,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    isPlaying: Boolean = true
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "wave")
+    val waveOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2f * Math.PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "offset"
+    )
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 2000, easing = LinearOutSlowInEasing),
+        label = "progress"
+    )
+
+    Box(modifier = modifier.height(12.dp)) {
+        // Track
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val centerY = size.height / 2
+            drawLine(
+                color = trackColor,
+                start = androidx.compose.ui.geometry.Offset(0f, centerY),
+                end = androidx.compose.ui.geometry.Offset(size.width, centerY),
+                strokeWidth = 4.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+        }
+
+        // Progress
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width * animatedProgress.coerceIn(0f, 1f)
+            if (width <= 0f) return@Canvas
+
+            val centerY = size.height / 2
+            val amplitude = if (isPlaying) 1.dp.toPx() else 0f
+            val wavelength = 100.dp.toPx()
+
+            val path = Path().apply {
+                val startY = if (isPlaying) centerY + amplitude * sin(waveOffset) else centerY
+                moveTo(0f, startY)
+                if (isPlaying && amplitude > 0f) {
+                    for (i in 0..width.toInt() step 2) {
+                        val x = i.toFloat()
+                        val y = centerY + amplitude * sin(x * (2 * Math.PI.toFloat() / wavelength) + waveOffset)
+                        lineTo(x, y)
+                    }
+                } else {
+                    lineTo(width, centerY)
+                }
+            }
+
+            drawPath(
+                path = path,
+                color = color,
+                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+            )
+        }
+    }
+}
 
 
 @Composable
@@ -160,7 +234,7 @@ fun WorkoutScreen(
 
                 NavigationDrawerItem(
                     label    = { Text("Notes", modifier = Modifier.padding(start = 8.dp)) },
-                    icon     = { Icon(Icons.AutoMirrored.Filled.Notes, null) },
+                    icon     = { Icon(Icons.Default.Create, null) },
                     selected = currentRoute == Screen.Notes.name,
                     onClick  = {
                         navigate(Screen.Notes.name)
@@ -227,7 +301,7 @@ fun WorkoutScreen(
                             )
                         }
                         IconButton(onClick = { navigate(Screen.Notes.name) }) {
-                            Icon(Icons.Default.Notes, contentDescription = "Notes", tint = MaterialTheme.colorScheme.onSurface)
+                            Icon(Icons.Default.Create, contentDescription = "Notes", tint = MaterialTheme.colorScheme.onSurface)
                         }
                         IconButton(onClick = { navigate(Screen.Settings.name) }) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
@@ -575,19 +649,18 @@ fun WorkoutScreen(
                                         )
                                     }
                                 }
-                                LinearProgressIndicator(
+                                WavyProgressIndicator(
                                     progress = {
                                         val position = currentSong.position?.toFloat() ?: 0f
                                         val duration = currentSong.duration?.toFloat() ?: 1f
                                         if (duration > 0) position / duration else 0f
-                                    },
+                                    }(),
                                     modifier = Modifier.fillMaxWidth()
                                         .padding(horizontal = 16.dp)
-                                        .padding(bottom = 10.dp)
-                                        .height(3.dp)
-                                        .clip(RoundedCornerShape(2.dp)),
+                                        .padding(bottom = 10.dp),
                                     color = primaryColor,
                                     trackColor = DarkSurfaceColor,
+                                    isPlaying = currentSong.isPlaying
                                 )
                             }
                         }

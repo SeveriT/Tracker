@@ -10,6 +10,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -61,6 +63,7 @@ fun WorkoutTimerScreen(
     val context = LocalContext.current
 
     val elapsedSeconds by timerViewModel.elapsedSeconds.collectAsState()
+    val currentLapSeconds by timerViewModel.currentLapSeconds.collectAsState()
     val isRunning by timerViewModel.isRunning.collectAsState()
     val hasStarted by timerViewModel.hasStarted.collectAsState()
     val selectedType by timerViewModel.selectedType.collectAsState()
@@ -70,10 +73,10 @@ fun WorkoutTimerScreen(
     val startDateTime by timerViewModel.startDateTime.collectAsState()
     val uploadState by stravaViewModel.uploadState.collectAsState()
     val savedToken by stravaViewModel.savedToken.collectAsState()
-    val timerIsRunning by timerViewModel.isRunning.collectAsState()
 
 
     val timeString = formatElapsed(elapsedSeconds)
+    val lapTimeString = formatElapsed(currentLapSeconds)
 
     val rawProgress = (elapsedSeconds % 60) / 60f
     val animatedProgress by animateFloatAsState(
@@ -112,15 +115,18 @@ fun WorkoutTimerScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp)
-            .padding(top = 32.dp, bottom = 8.dp + bottomPadding),
+            .padding(top = 42.dp, bottom = 8.dp + bottomPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
 
         Text(
-            text = "Workout Timer",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+            text = if (hasStarted) "$lapTimeString" else "",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = if (hasStarted) 50.sp else 50.sp,
+            letterSpacing = if (hasStarted) 2.sp else 0.sp,
+            color = if (hasStarted) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface
         )
 
 
@@ -129,7 +135,13 @@ fun WorkoutTimerScreen(
         // ── Ring + time display ───────────────────────────────────────────────
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(320.dp)
+            modifier = Modifier
+                .size(320.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = ripple(bounded = false, radius = 160.dp),
+                    onClick = { timerViewModel.lap() }
+                )
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val stroke = 14.dp.toPx()
@@ -296,8 +308,7 @@ private fun UploadWorkoutDialog(
                     ) {
                         Row(
                             modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                            verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.Warning,
                                 contentDescription = null,

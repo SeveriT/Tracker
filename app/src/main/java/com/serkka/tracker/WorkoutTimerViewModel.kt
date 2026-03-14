@@ -1,6 +1,8 @@
 package com.serkka.tracker
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Intent
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -10,11 +12,14 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class WorkoutTimerViewModel : ViewModel() {
+class WorkoutTimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     // ── Core timer state ──────────────────────────────────────────────────────
     private val _elapsedSeconds = MutableStateFlow(0L)
     val elapsedSeconds: StateFlow<Long> = _elapsedSeconds
+
+    private val _currentLapSeconds = MutableStateFlow(0L)
+    val currentLapSeconds: StateFlow<Long> = _currentLapSeconds
 
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning
@@ -46,6 +51,10 @@ class WorkoutTimerViewModel : ViewModel() {
         if (!_hasStarted.value) {
             _startDateTime.value = LocalDateTime.now()
             _hasStarted.value = true
+            _currentLapSeconds.value = 0L
+            startTimerService()
+        } else {
+            resumeTimerService()
         }
         if (_isRunning.value) return          // already ticking
         _isRunning.value = true
@@ -54,6 +63,7 @@ class WorkoutTimerViewModel : ViewModel() {
             while (true) {
                 delay(1000L)
                 _elapsedSeconds.value++
+                _currentLapSeconds.value++
             }
         }
     }
@@ -62,10 +72,17 @@ class WorkoutTimerViewModel : ViewModel() {
         _isRunning.value = false
         tickJob?.cancel()
         tickJob = null
+        pauseTimerService()
     }
 
     fun toggleRunning() {
         if (_isRunning.value) pause() else start()
+    }
+
+    fun lap() {
+        if (_isRunning.value) {
+            _currentLapSeconds.value = 0L
+        }
     }
 
     // Stop tapping opens the upload dialog and pauses the timer
@@ -91,8 +108,10 @@ class WorkoutTimerViewModel : ViewModel() {
     // Reset everything after a successful upload
     fun reset() {
         pause()
+        stopTimerService()
         _hasStarted.value       = false
         _elapsedSeconds.value   = 0L
+        _currentLapSeconds.value = 0L
         _startDateTime.value    = null
         _activityName.value     = ""
         _distanceKm.value       = ""
@@ -103,6 +122,30 @@ class WorkoutTimerViewModel : ViewModel() {
     fun setActivityName(name: String)              { _activityName.value  = name }
     fun setDistanceKm(dist: String)                { _distanceKm.value    = dist }
     fun setSelectedType(type: WorkoutActivityType) { _selectedType.value  = type }
+
+    // ── Foreground service helpers ─────────────────────────────────────────────
+    private fun serviceIntent(action: String) =
+        Intent(app, TimerForegroundService::class.java).apply { this.action = action }
+
+    private fun startTimerService() {
+        val intent = serviceIntent(TimerForegroundService.ACTION_START)
+            .putExtra(TimerForegroundService.EXTRA_ELAPSED, _elapsedSeconds.value)
+        app.startForegroundService(intent)
+    }
+
+    private fun pauseTimerService() {
+        app.startService(serviceIntent(TimerForegroundService.ACTION_PAUSE))
+    }
+
+    private fun resumeTimerService() {
+        val intent = serviceIntent(TimerForegroundService.ACTION_RESUME)
+            .putExtra(TimerForegroundService.EXTRA_ELAPSED, _elapsedSeconds.value)
+        app.startService(intent)
+    }
+
+    private fun stopTimerService() {
+        app.startService(serviceIntent(TimerForegroundService.ACTION_STOP))
+    }
 
     override fun onCleared() {
         super.onCleared()
