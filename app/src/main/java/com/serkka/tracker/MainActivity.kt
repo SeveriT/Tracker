@@ -50,16 +50,6 @@ class MainActivity : ComponentActivity() {
         // 3. Schedule Automatic Backup
         scheduleBackup()
 
-        val timerViewModel = ViewModelProvider(
-            this,
-            object : ViewModelProvider.Factory {
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    @Suppress("UNCHECKED_CAST")
-                    return WorkoutTimerViewModel(application) as T
-                }
-            }
-        )[WorkoutTimerViewModel::class.java]
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ActivityCompat.requestPermissions(
                 this,

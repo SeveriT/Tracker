@@ -120,8 +120,6 @@ class WorkoutTimerViewModel(private val app: Application) : AndroidViewModel(app
     }
 
     fun setActivityName(name: String)              { _activityName.value  = name }
-    fun setDistanceKm(dist: String)                { _distanceKm.value    = dist }
-    fun setSelectedType(type: WorkoutActivityType) { _selectedType.value  = type }
 
     // ── Foreground service helpers ─────────────────────────────────────────────
     private fun serviceIntent(action: String) =

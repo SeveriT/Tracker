@@ -19,7 +19,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -126,7 +125,6 @@ fun WavyProgressIndicator(
 
 @Composable
 private fun ElasticColumnWrapper(
-    listState: LazyListState,
     content: @Composable () -> Unit
 ) {
     // Column scaling removed as it was reported as clunky
@@ -382,7 +380,7 @@ fun WorkoutScreen(
                 exitTransition  = { fadeOut(animationSpec = tween(300)) }
             ) {
                 composable(Screen.Summary.name) {
-                    ElasticColumnWrapper(summaryListState) {
+                    ElasticColumnWrapper {
                         SummaryPage(
                             workouts = workouts,
                             bodyWeights = bodyWeights,
@@ -397,7 +395,7 @@ fun WorkoutScreen(
                     }
                 }
                 composable(Screen.Workouts.name) {
-                    ElasticColumnWrapper(workoutsListState) {
+                    ElasticColumnWrapper {
                         WorkoutListContent(
                             workouts = workouts,
                             primaryColor = primaryColor,
@@ -412,7 +410,7 @@ fun WorkoutScreen(
                     StravaCalendarPage(stravaViewModel, primaryColor)
                 }
                 composable(Screen.WeightTracking.name) {
-                    ElasticColumnWrapper(weightListState) {
+                    ElasticColumnWrapper {
                         WeightTrackingPage(
                             bodyWeights = bodyWeights,
                             primaryColor = primaryColor,
@@ -426,7 +424,7 @@ fun WorkoutScreen(
                     WorkoutStatsPage(workouts, primaryColor)
                 }
                 composable(Screen.Notes.name) {
-                    ElasticColumnWrapper(notesListState) {
+                    ElasticColumnWrapper {
                         NotesPage(
                             notes = notesList,
                             primaryColor = primaryColor,
@@ -683,12 +681,11 @@ fun WorkoutScreen(
                                         )
                                     }
                                 }
+                                val position1 = currentSong.position?.toFloat() ?: 0f
+                                val duration1 = currentSong.duration?.toFloat() ?: 1f
+
                                 WavyProgressIndicator(
-                                    progress = {
-                                        val position = currentSong.position?.toFloat() ?: 0f
-                                        val duration = currentSong.duration?.toFloat() ?: 1f
-                                        if (duration > 0) position / duration else 0f
-                                    }(),
+                                    progress = if (duration1 > 0) position1 / duration1 else 0f,
                                     modifier = Modifier.fillMaxWidth()
                                         .padding(horizontal = 16.dp)
                                         .padding(bottom = 10.dp),
