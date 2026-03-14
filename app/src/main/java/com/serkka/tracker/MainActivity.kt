@@ -17,6 +17,16 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.serkka.tracker.ui.theme.GymTrackerTheme
 import java.util.concurrent.TimeUnit
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 
 class MainActivity : ComponentActivity() {
     private lateinit var stravaViewModel: StravaViewModel
@@ -52,6 +62,30 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 )
+
+                var showExitDialog by remember { mutableStateOf(false) }
+
+                BackHandler {
+                    showExitDialog = true
+                }
+
+                if (showExitDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showExitDialog = false },
+                        title = { Text("Exit App") },
+                        text  = { Text("Are you sure you want to exit?") },
+                        confirmButton = {
+                            Button(onClick = { finishAffinity() }) {
+                                Text("Exit")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showExitDialog = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
 
                 // 5. Launch the UI
                 WorkoutScreen(

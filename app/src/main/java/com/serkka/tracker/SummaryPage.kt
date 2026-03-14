@@ -244,42 +244,73 @@ fun SummaryPage(
                                         modifier = Modifier.fillMaxSize()
                                     ) {
                                         val weights = weekWeights.map { it.weight }
-                                        val minWeight = weights.minOrNull() ?: 0f
-                                        val maxWeight = weights.maxOrNull() ?: 100f
+                                        val rawMin = weights.minOrNull() ?: 0f
+                                        val rawMax = weights.maxOrNull() ?: 100f
+                                        val pad = (rawMax - rawMin).coerceAtLeast(1f) * 0.15f
+                                        val minWeight = rawMin - pad
+                                        val maxWeight = rawMax + pad
                                         val range = (maxWeight - minWeight).coerceAtLeast(1f)
-                                        val graphWidth = size.width
+                                        val graphWidth  = size.width
                                         val graphHeight = size.height
                                         val spacing = graphWidth / (weights.size - 1).coerceAtLeast(1)
 
-                                        val fillPath = Path()
-                                        weights.forEachIndexed { index, weight ->
+                                        // Build evenly-spaced points
+                                        val points = weights.mapIndexed { index, weight ->
                                             val x = index * spacing
                                             val y = graphHeight - ((weight - minWeight) / range * graphHeight)
-                                            if (index == 0) { fillPath.moveTo(x, graphHeight); fillPath.lineTo(x, y) }
-                                            else fillPath.lineTo(x, y)
+                                            Offset(x, y)
                                         }
-                                        fillPath.lineTo(graphWidth, graphHeight)
-                                        fillPath.close()
+
+                                        // Smooth cubic bezier helper (Catmull-Rom → Bézier)
+                                        fun Path.smoothCurveTo(pts: List<Offset>) {
+                                            if (pts.size < 2) return
+                                            moveTo(pts.first().x, pts.first().y)
+                                            if (pts.size == 2) { lineTo(pts[1].x, pts[1].y); return }
+                                            for (i in 0 until pts.size - 1) {
+                                                val cur  = pts[i]
+                                                val next = pts[i + 1]
+                                                val cp1x = cur.x  + (next.x - (if (i > 0) pts[i - 1].x else cur.x)) / 6f
+                                                val cp1y = cur.y  + (next.y - (if (i > 0) pts[i - 1].y else cur.y)) / 6f
+                                                val cp2x = next.x - ((if (i < pts.size - 2) pts[i + 2].x else next.x) - cur.x) / 6f
+                                                val cp2y = next.y - ((if (i < pts.size - 2) pts[i + 2].y else next.y) - cur.y) / 6f
+                                                cubicTo(cp1x, cp1y, cp2x, cp2y, next.x, next.y)
+                                            }
+                                        }
+
+                                        // Grid lines
+                                        val gridColor = Color(0xFF424349)
+                                        for (i in 0..3) {
+                                            val yPx = graphHeight * (i.toFloat() / 3f)
+                                            drawLine(
+                                                color = gridColor,
+                                                start = Offset(0f, yPx),
+                                                end   = Offset(graphWidth, yPx),
+                                                strokeWidth = 1.dp.toPx()
+                                            )
+                                        }
+
+                                        // Fill gradient
+                                        val fillPath = Path().apply {
+                                            smoothCurveTo(points)
+                                            lineTo(points.last().x, graphHeight)
+                                            lineTo(points.first().x, graphHeight)
+                                            close()
+                                        }
                                         drawPath(
-                                            path = fillPath,
+                                            path  = fillPath,
                                             brush = Brush.verticalGradient(
-                                                listOf(primaryColor.copy(alpha = 0.2f * animationProgress.value), Color.Transparent)
+                                                listOf(primaryColor.copy(alpha = 0.25f * animationProgress.value), Color.Transparent)
                                             )
                                         )
 
-                                        val linePath = Path()
-                                        weights.forEachIndexed { index, weight ->
-                                            val x = index * spacing
-                                            val y = graphHeight - ((weight - minWeight) / range * graphHeight)
-                                            if (index == 0) linePath.moveTo(x, y) else linePath.lineTo(x, y)
-                                        }
+                                        // Smooth line
+                                        val linePath = Path().apply { smoothCurveTo(points) }
                                         drawPath(linePath, color = primaryColor, style = Stroke(width = 2.5.dp.toPx()), alpha = animationProgress.value)
 
-                                        weights.forEachIndexed { index, weight ->
-                                            val x = index * spacing
-                                            val y = graphHeight - ((weight - minWeight) / range * graphHeight)
-                                            drawCircle(surfaceColor, radius = 4.dp.toPx() * animationProgress.value, center = Offset(x, y))
-                                            drawCircle(primaryColor, radius = 3.dp.toPx() * animationProgress.value, center = Offset(x, y))
+                                        // Hollow dots
+                                        points.forEach { pt ->
+                                            drawCircle(color = primaryColor,        radius = 4.dp.toPx() * animationProgress.value, center = pt)
+                                            drawCircle(color = Color(0xFF24252B),   radius = 2.dp.toPx() * animationProgress.value, center = pt)
                                         }
                                     }
 
@@ -290,7 +321,7 @@ fun SummaryPage(
                                                 color = when {
                                                     trend > 0.1f  -> Color(0xFFEE3E3E).copy(alpha = 0.8f)
                                                     trend < -0.1f -> Color(0xFF46CE46).copy(alpha = 0.8f)
-                                                    else          -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                                    else          -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                                                 },
                                                 shape = RoundedCornerShape(6.dp)
                                             )

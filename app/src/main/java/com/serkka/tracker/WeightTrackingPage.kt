@@ -25,10 +25,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -211,52 +214,135 @@ fun WeightTrackingPage(
 fun WeightChart(weights: List<BodyWeight>, color: Color) {
     if (weights.isEmpty()) return
 
-    val minWeight = weights.minOf { it.weight } - 1f
-    val maxWeight = weights.maxOf { it.weight } + 1f
+    val gridLineColor  = Color(0xFF424349)
+    val labelColor     = Color(0xFF9E9EA8)
+    val gridLineStroke = 1.dp
+    val yLabelCount    = 4   // number of horizontal grid lines
+    val xLabelCount    = minOf(weights.size, 5)  // up to 5 date labels
+
+    val rawMin = weights.minOf { it.weight }
+    val rawMax = weights.maxOf { it.weight }
+    val padding = maxOf(1f, (rawMax - rawMin) * 0.15f)
+    val minWeight  = rawMin - padding
+    val maxWeight  = rawMax + padding
     val weightRange = maxOf(1f, maxWeight - minWeight)
-    val minDate = weights.first().date
-    val maxDate = weights.last().date
+
+    val minDate  = weights.first().date
+    val maxDate  = weights.last().date
     val dateRange = maxOf(1L, maxDate - minDate)
 
     val animationProgress = remember { Animatable(0f) }
     LaunchedEffect(weights) {
-        animationProgress.animateTo(1f, animationSpec = tween(500, easing = FastOutSlowInEasing))
+        animationProgress.animateTo(1f, animationSpec = tween(600, easing = FastOutSlowInEasing))
+    }
+
+    // Pre-format x-axis date labels
+    val dateFmt = remember { SimpleDateFormat("d MMM", Locale.getDefault()) }
+    val xLabels: List<Pair<Float, String>> = remember(weights) {
+        if (weights.size < 2) return@remember emptyList()
+        val step = (weights.size - 1).toFloat() / (xLabelCount - 1).coerceAtLeast(1)
+        (0 until xLabelCount).map { i ->
+            val idx = (i * step).toInt().coerceIn(0, weights.size - 1)
+            val ratio = (weights[idx].date - minDate).toFloat() / dateRange.toFloat()
+            Pair(ratio, dateFmt.format(Date(weights[idx].date)))
+        }
     }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val width = size.width
-        val height = size.height
+        val yLabelWidthPx = 46.dp.toPx()
+        val xLabelHeightPx = 20.dp.toPx()
+        val chartLeft   = yLabelWidthPx
+        val chartBottom = size.height - xLabelHeightPx
+        val chartWidth  = size.width - chartLeft
+        val chartHeight = chartBottom
 
-        val points = weights.map { weight ->
-            val x = ((weight.date - minDate).toFloat() / dateRange.toFloat()) * width
-            val y = height - ((weight.weight - minWeight) / weightRange) * height
-            Offset(x, y)
+        val textPaint = android.graphics.Paint().apply {
+            isAntiAlias = true
+            textSize    = 10.sp.toPx()
+            setColor(labelColor.toArgb())
         }
 
-        if (points.size > 1) {
-            val path = Path().apply {
-                moveTo(points.first().x, points.first().y)
-                for (i in 1 until points.size) lineTo(points[i].x, points[i].y)
-            }
-            drawPath(path, color = color, style = Stroke(width = 3.dp.toPx()), alpha = animationProgress.value)
+        // ── Horizontal grid lines + Y labels ─────────────────────────────────
+        for (i in 0..yLabelCount) {
+            val fraction = i.toFloat() / yLabelCount
+            val yVal     = minWeight + fraction * weightRange
+            val yPx      = chartBottom - fraction * chartHeight
 
-            val fillPath = Path().apply {
-                addPath(path)
-                lineTo(width, height)
-                lineTo(0f, height)
-                close()
-            }
-            drawPath(
-                path = fillPath,
-                brush = Brush.verticalGradient(
-                    listOf(color.copy(alpha = 0.2f * animationProgress.value), Color.Transparent)
-                )
+            // Grid line
+            drawLine(
+                color       = gridLineColor,
+                start       = Offset(chartLeft, yPx),
+                end         = Offset(size.width, yPx),
+                strokeWidth = gridLineStroke.toPx()
+            )
+
+            // Y-axis label
+            val label = if (yVal % 1 == 0f) yVal.toInt().toString()
+            else String.format("%.1f", yVal)
+            drawContext.canvas.nativeCanvas.drawText(
+                label,
+                0f,
+                yPx + textPaint.textSize / 3f,
+                textPaint.apply { textAlign = android.graphics.Paint.Align.LEFT }
             )
         }
 
-        points.forEach { point ->
-            drawCircle(color = color, radius = 4.dp.toPx() * animationProgress.value, center = point)
+        // ── Map data to canvas points ─────────────────────────────────────────
+        val points = weights.map { w ->
+            val x = chartLeft + ((w.date - minDate).toFloat() / dateRange.toFloat()) * chartWidth
+            val y = chartBottom - ((w.weight - minWeight) / weightRange) * chartHeight
+            Offset(x, y)
         }
+
+        // ── Smooth cubic bezier helper ────────────────────────────────────────
+        fun Path.smoothCurveTo(pts: List<Offset>) {
+            if (pts.size < 2) return
+            moveTo(pts.first().x, pts.first().y)
+            if (pts.size == 2) { lineTo(pts[1].x, pts[1].y); return }
+            for (i in 0 until pts.size - 1) {
+                val cur  = pts[i]
+                val next = pts[i + 1]
+                val cp1x = cur.x  + (next.x - (if (i > 0) pts[i - 1].x else cur.x)) / 6f
+                val cp1y = cur.y  + (next.y - (if (i > 0) pts[i - 1].y else cur.y)) / 6f
+                val cp2x = next.x - ((if (i < pts.size - 2) pts[i + 2].x else next.x) - cur.x) / 6f
+                val cp2y = next.y - ((if (i < pts.size - 2) pts[i + 2].y else next.y) - cur.y) / 6f
+                cubicTo(cp1x, cp1y, cp2x, cp2y, next.x, next.y)
+            }
+        }
+
+        // ── Fill gradient ─────────────────────────────────────────────────────
+        if (points.size > 1) {
+            val fillPath = Path().apply {
+                smoothCurveTo(points)
+                lineTo(points.last().x, chartBottom)
+                lineTo(points.first().x, chartBottom)
+                close()
+            }
+            drawPath(
+                path  = fillPath,
+                brush = Brush.verticalGradient(
+                    colors = listOf(color.copy(alpha = 0.25f * animationProgress.value), Color.Transparent),
+                    startY = 0f,
+                    endY   = chartBottom
+                )
+            )
+
+            // ── Line ─────────────────────────────────────────────────────────
+            val linePath = Path().apply { smoothCurveTo(points) }
+            drawPath(
+                path  = linePath,
+                color = color,
+                style = Stroke(width = 2.5.dp.toPx()),
+                alpha = animationProgress.value
+            )
+        }
+
+        // ── Data point dots ───────────────────────────────────────────────────
+        points.forEach { pt ->
+            drawCircle(color = color,       radius = 4.dp.toPx() * animationProgress.value, center = pt)
+            drawCircle(color = Color(0xFF24252B), radius = 2.dp.toPx() * animationProgress.value, center = pt)
+        }
+
     }
 }
 
