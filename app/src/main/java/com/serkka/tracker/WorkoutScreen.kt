@@ -26,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -205,9 +207,9 @@ fun WorkoutScreen(
                                     Icon(Icons.Default.Timer, contentDescription = "Timer running", modifier = Modifier.size(16.dp))
                                 },
                                 colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    leadingIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                    labelColor = MaterialTheme.colorScheme.surface,
+                                    leadingIconContentColor = MaterialTheme.colorScheme.surface
                                 ),
                                 modifier = Modifier.padding(end = 4.dp)
                             )
@@ -423,10 +425,44 @@ fun WorkoutScreen(
             floatingActionButtonPosition = FabPosition.Center
 
         ) { innerPadding ->
+            // Screens that can be swiped between (matches bottom nav order)
+            val swipeScreens = listOf(
+                Screen.StravaCalendar.name,
+                Screen.Workouts.name,
+                Screen.Summary.name,
+                Screen.WeightTracking.name,
+                Screen.WorkoutTimer.name
+            )
+            val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
             NavHost(
                 navController = navController,
                 startDestination = Screen.Summary.name,
-                modifier = Modifier.padding(innerPadding),
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .pointerInput(currentRoute) {
+                        var dragTotal = 0f
+                        detectHorizontalDragGestures(
+                            onDragStart  = { dragTotal = 0f },
+                            onDragEnd    = {
+                                val idx = swipeScreens.indexOf(currentRoute)
+                                if (idx >= 0) {
+                                    val target = when {
+                                        dragTotal < -80f && idx < swipeScreens.lastIndex ->
+                                            swipeScreens[idx + 1]
+                                        dragTotal >  80f && idx > 0 ->
+                                            swipeScreens[idx - 1]
+                                        else -> null
+                                    }
+                                    target?.let {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        navigate(it)
+                                    }
+                                }
+                            },
+                            onHorizontalDrag = { _, delta -> dragTotal += delta }
+                        )
+                    },
                 enterTransition = { fadeIn(animationSpec = tween(300)) },
                 exitTransition  = { fadeOut(animationSpec = tween(300)) }
             ) {
