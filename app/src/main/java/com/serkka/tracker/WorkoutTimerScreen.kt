@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 data class WorkoutActivityType(
@@ -111,7 +112,7 @@ fun WorkoutTimerScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp)
-            .padding(top = 16.dp, bottom = 16.dp + bottomPadding),
+            .padding(top = 32.dp, bottom = 8.dp + bottomPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
@@ -169,7 +170,7 @@ fun WorkoutTimerScreen(
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.weight(0.6f))
 
         // ── Controls ──────────────────────────────────────────────────────────
         Row(
@@ -209,12 +210,14 @@ fun WorkoutTimerScreen(
                 Icon(
                     imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (isRunning) "Pause" else "Start",
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.surface
+
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(80.dp))
 
         // ── Upload dialog ─────────────────────────────────────────────────────────
         if (showUploadDialog) {
@@ -226,7 +229,7 @@ fun WorkoutTimerScreen(
                 isStravaLinked = savedToken.isNotBlank(),
                 onUpload = {
                     val dt = startDateTime
-                        ?: java.time.LocalDateTime.now().minusSeconds(elapsedSeconds)
+                        ?: LocalDateTime.now().minusSeconds(elapsedSeconds)
                     val iso = dt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                     val dist = distanceKm.replace(',', '.').toFloatOrNull()?.let { it * 1000f }
                     stravaViewModel.uploadWorkout(
@@ -258,7 +261,7 @@ private fun UploadWorkoutDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isUploading) onDismiss() },
-        title = { Text("Save Workout", fontWeight = FontWeight.Bold) },
+        title = { Text("Upload Workout", fontWeight = FontWeight.Bold) },
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         text = {
@@ -315,44 +318,45 @@ private fun UploadWorkoutDialog(
         confirmButton = {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(
                     onClick = onDiscard,
                     enabled = !isUploading,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1.2f)
                 ) {
                     Text("Discard", color = MaterialTheme.colorScheme.error)
                 }
                 TextButton(
                     onClick = onDismiss,
                     enabled = !isUploading,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1.2f)
                 ) {
                     Text("Cancel")
                 }
+                Spacer(Modifier.width(4.dp))
                 Button(
                     onClick = onUpload,
                     enabled = activityName.isNotBlank() && !isUploading && isStravaLinked,
-                    modifier = Modifier.weight(2f)
+                    modifier = Modifier.weight(1.6f)
                 ) {
                     if (isUploading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
+                            color = MaterialTheme.colorScheme.onPrimary,
                         )
                     } else {
                         Icon(
                             Icons.Default.CloudUpload,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.surface,
                         )
                         Spacer(Modifier.width(2.dp))
-                        Text("Upload")
+                        Text("Upload",color = MaterialTheme.colorScheme.surface)
                     }
                 }
             }

@@ -24,8 +24,8 @@ object TrackerColors {
     val Purple            = Color(0xFF8766EB)   // primary brand purple
     val PurpleLight       = Color(0xFFB49BF5)   // lighter purple tint
     val PurpleDark        = Color(0xFF5E42C8)   // pressed state
-
     val StravaOrange      = Color(0xFFC94100)   // Strava Orange
+    val MusicWidgetColor       = Color(0xFFC94100)
 
     // Accents
     val Lime              = Color(0xFFECFE72)   // lime yellow — used for highlights

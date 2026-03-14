@@ -253,7 +253,7 @@ fun WeightTrackingPage(
             }
         }
 
-        item { Spacer(modifier = Modifier.height(80.dp)) }
+        item { Spacer(modifier = Modifier.height(150.dp)) }
     }
 }
 

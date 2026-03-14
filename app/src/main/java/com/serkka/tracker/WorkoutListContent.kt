@@ -54,7 +54,7 @@ fun WorkoutListContent(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 95.dp)
+        contentPadding = PaddingValues(bottom = 170.dp)
     ) {
         groupedWorkouts.forEach { (date, workoutsInDay) ->
             stickyHeader {

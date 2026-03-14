@@ -480,7 +480,7 @@ fun SettingsPage(
 
 
 
-        item { Spacer(modifier = Modifier.height(80.dp)) }
+        item { Spacer(modifier = Modifier.height(130.dp)) }
     }
 
     if (showDeleteConfirmDialog) {

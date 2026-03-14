@@ -25,6 +25,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.background
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -117,7 +123,7 @@ fun WorkoutScreen(
     val navBarColors = NavigationBarItemDefaults.colors(
         selectedIconColor = MaterialTheme.colorScheme.primary,
         selectedTextColor = MaterialTheme.colorScheme.primary,
-        indicatorColor = primaryColor.copy(alpha = 0.1f),
+        indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
     )
 
     val drawerItemColors: @Composable () -> NavigationDrawerItemColors = {
@@ -237,200 +243,11 @@ fun WorkoutScreen(
                 )
             },
 
-            bottomBar = {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 4.dp,
-                    contentColor = primaryColor,
-                ) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.CalendarMonth, null) },
-                        label = { Text("Strava") },
-                        selected = currentRoute == Screen.StravaCalendar.name,
-                        onClick  = { navigate(Screen.StravaCalendar.name) },
-                        colors = navBarColors
-                    )
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.FitnessCenter, null) },
-                        label = { Text("Workouts") },
-                        selected = currentRoute == Screen.Workouts.name,
-                        onClick  = { navigate(Screen.Workouts.name) },
-                        colors = navBarColors
-                    )
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.Dashboard, null) },
-                        label = { Text("Summary") },
-                        selected = currentRoute == Screen.Summary.name,
-                        onClick  = { navigate(Screen.Summary.name) },
-                        colors = navBarColors
-                    )
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.MonitorWeight, null) },
-                        label = { Text("Weight") },
-                        selected = currentRoute == Screen.WeightTracking.name,
-                        onClick  = { navigate(Screen.WeightTracking.name) },
-                        colors = navBarColors
-                    )
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.Timer, null) },
-                        label = { Text("Timer") },
-                        selected = currentRoute == Screen.WorkoutTimer.name,
-                        onClick  = { navigate(Screen.WorkoutTimer.name) },
-                        colors = navBarColors
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
-            },
+            bottomBar = {},
 
-            floatingActionButton = {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val hasMusicWidget = currentSong.title != null && currentSong.packageName == "com.spotify.music"
-                    val fabScreens = setOf(Screen.Workouts.name, Screen.WeightTracking.name, Screen.Notes.name)
-
-                    if (hasMusicWidget) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.surface,
-                            shape = MaterialTheme.shapes.large,
-                            tonalElevation = 4.dp,
-                            shadowElevation = 4.dp,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = if (isFabVisible && currentRoute in fabScreens) 16.dp else 0.dp)
-                        ) {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(0.dp)
-                                ) {
-                                    val haptic = LocalHapticFeedback.current
-                                    Box(
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .clip(CircleShape)
-                                            .combinedClickable(
-                                                onClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                    MediaRepository.getInstance().togglePlayPause()
-                                                }
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = if (currentSong.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                            contentDescription = "Play/Pause",
-                                            tint = if (currentSong.isPlaying) primaryColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
-                                    Column(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .padding(horizontal = 8.dp)
-                                            .clickable { MediaRepository.getInstance().openApp() }
-                                    ) {
-                                        Text(
-                                            text = currentSong.title ?: "",
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                        Text(
-                                            text = currentSong.artist ?: "",
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .size(48.dp)
-                                            .clip(CircleShape)
-                                            .combinedClickable(
-                                                onClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                    MediaRepository.getInstance().nextTrack()
-                                                },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    MediaRepository.getInstance().previousTrack()
-                                                }
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.SkipNext,
-                                            contentDescription = "Next (Long press for Previous)",
-                                            tint = primaryColor,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    }
-                                }
-                                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                                    LinearProgressIndicator(
-                                        progress = {
-                                            val position = currentSong.position?.toFloat() ?: 0f
-                                            val duration = currentSong.duration?.toFloat() ?: 1f
-                                            if (duration > 0) position / duration else 0f
-                                        },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(bottom = 10.dp)
-                                            .height(4.dp)
-                                            .clip(RoundedCornerShape(2.dp)),
-                                        color = primaryColor,
-                                        trackColor = DarkSurfaceColor,
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-
-                    AnimatedVisibility(
-                        visible = isFabVisible,
-                        enter   = fadeIn() + scaleIn(),
-                        exit    = fadeOut() + scaleOut()
-                    ) {
-                        when (currentRoute) {
-                            Screen.Workouts.name -> FloatingActionButton(
-                                onClick = { showAddWorkoutDialog = true },
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = primaryColor,
-                                elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                                modifier = Modifier.size(70.dp)
-                            ) { Icon(Icons.Default.Add, "Add Workout", modifier = Modifier.size(32.dp)) }
-
-                            Screen.WeightTracking.name -> FloatingActionButton(
-                                onClick = { viewModel.prepareNewEntry(); showAddWeightDialog = true },
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = primaryColor,
-                                elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                                modifier = Modifier.size(70.dp)
-                            ) { Icon(Icons.Default.MonitorWeight, "Add Weight") }
-
-                            Screen.Notes.name -> FloatingActionButton(
-                                onClick = { showAddNoteDialog = true },
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = primaryColor,
-                                elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                                modifier = Modifier.size(70.dp)
-                            ) { Icon(Icons.Default.Add, "Add Note", modifier = Modifier.size(32.dp)) }
-                        }
-                    }
-                }
-            },
-            floatingActionButtonPosition = FabPosition.Center
 
         ) { innerPadding ->
+            Box(modifier = Modifier.fillMaxSize()) {
             // Screens that can be swiped between (matches bottom nav order)
             val swipeScreens = listOf(
                 Screen.StravaCalendar.name,
@@ -445,7 +262,8 @@ fun WorkoutScreen(
                 navController = navController,
                 startDestination = Screen.Summary.name,
                 modifier = Modifier
-                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .padding(top = innerPadding.calculateTopPadding())
                     .pointerInput(currentRoute) {
                         var dragTotal = 0f
                         detectHorizontalDragGestures(
@@ -650,6 +468,281 @@ fun WorkoutScreen(
                     onDismiss = { noteToDelete = null }
                 )
             }
+
+            // ── Music widget + FAB ────────────────────────────────────────────
+            val fabScreens = setOf(Screen.Workouts.name, Screen.WeightTracking.name, Screen.Notes.name)
+            val hasMusicWidget = currentSong.title != null && currentSong.packageName == "com.spotify.music"
+
+            if (hasMusicWidget) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 80.dp)
+                ) {
+                    // Music widget — full width
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = if (isFabVisible && currentRoute in fabScreens) 80.dp else 0.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(MaterialTheme.shapes.large)
+                                .background(Color.Black.copy(alpha = 0.95f))
+                        )
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            shape = MaterialTheme.shapes.large,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val haptic = LocalHapticFeedback.current
+
+                                    // Album art
+                                    currentSong.albumArt?.let { bitmap ->
+                                        androidx.compose.foundation.Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = "Album art",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                    }
+
+
+                                    Column(
+                                        modifier = Modifier.weight(1f).padding(horizontal = 10.dp)
+                                            .clickable { MediaRepository.getInstance().openApp() }
+                                    ) {
+                                        Text(
+                                            text = currentSong.title ?: "",
+                                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            text = currentSong.artist ?: "",
+                                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Box(
+                                        modifier = Modifier.size(52.dp).clip(CircleShape)
+                                            .combinedClickable(
+                                                onClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    MediaRepository.getInstance().nextTrack()
+                                                },
+                                                onLongClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    MediaRepository.getInstance().previousTrack()
+                                                }
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.SkipNext,
+                                            contentDescription = "Next",
+                                            tint = primaryColor,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                    // Play/Pause
+                                    Box(
+                                        modifier = Modifier.size(52.dp).clip(CircleShape)
+                                            .combinedClickable(onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                MediaRepository.getInstance().togglePlayPause()
+                                            }),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (currentSong.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                            contentDescription = "Play/Pause",
+                                            tint = if (currentSong.isPlaying) primaryColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+                                }
+                                LinearProgressIndicator(
+                                    progress = {
+                                        val position = currentSong.position?.toFloat() ?: 0f
+                                        val duration = currentSong.duration?.toFloat() ?: 1f
+                                        if (duration > 0) position / duration else 0f
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
+                                        .padding(bottom = 10.dp)
+                                        .height(3.dp)
+                                        .clip(RoundedCornerShape(2.dp)),
+                                    color = primaryColor,
+                                    trackColor = DarkSurfaceColor,
+                                )
+                            }
+                        }
+                    }
+
+                    // FAB floating top-right above the music widget
+                    AnimatedVisibility(
+                        visible = isFabVisible && currentRoute in fabScreens,
+                        enter = fadeIn() + scaleIn(),
+                        exit  = fadeOut() + scaleOut(),
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(70.dp)
+                                .clip(MaterialTheme.shapes.large)
+                                .background(Color.Black.copy(alpha = 0.95f))
+                        ) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                shape = MaterialTheme.shapes.large,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize().combinedClickable(onClick = {
+                                        when (currentRoute) {
+                                            Screen.Workouts.name -> showAddWorkoutDialog = true
+                                            Screen.WeightTracking.name -> { viewModel.prepareNewEntry(); showAddWeightDialog = true }
+                                            Screen.Notes.name -> showAddNoteDialog = true
+                                        }
+                                    }),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (currentRoute == Screen.WeightTracking.name)
+                                            Icons.Default.MonitorWeight else Icons.Default.Add,
+                                        contentDescription = "Add",
+                                        tint = primaryColor,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // No music — show FAB at bottom end
+                AnimatedVisibility(
+                    visible = isFabVisible && currentRoute in fabScreens,
+                    enter = fadeIn() + scaleIn(),
+                    exit  = fadeOut() + scaleOut(),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 105.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(70.dp)
+                            .clip(MaterialTheme.shapes.large)
+                            .background(Color.Black.copy(alpha = 0.95f))
+                    ) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                            shape = MaterialTheme.shapes.large,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                        when (currentRoute) {
+                        Screen.Workouts.name -> FloatingActionButton(
+                            onClick = { showAddWorkoutDialog = true },
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = primaryColor,
+                            elevation = FloatingActionButtonDefaults.elevation(4.dp),
+                            modifier = Modifier.size(70.dp)
+                        ) { Icon(Icons.Default.Add, "Add Workout", modifier = Modifier.size(36.dp)) }
+                        Screen.WeightTracking.name -> FloatingActionButton(
+                            onClick = { viewModel.prepareNewEntry(); showAddWeightDialog = true },
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = primaryColor,
+                            elevation = FloatingActionButtonDefaults.elevation(4.dp),
+                            modifier = Modifier.size(70.dp)
+                        ) { Icon(Icons.Default.MonitorWeight, "Add Weight") }
+                        Screen.Notes.name -> FloatingActionButton(
+                            onClick = { showAddNoteDialog = true },
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = primaryColor,
+                            elevation = FloatingActionButtonDefaults.elevation(4.dp),
+                            modifier = Modifier.size(70.dp)
+                        ) { Icon(Icons.Default.Add, "Add Note", modifier = Modifier.size(36.dp)) }
+                    }
+                }
+                    }
+                }
+            }
+
+            // ── Gradient nav bar ──────────────────────────────────────────────
+            val bgColor = MaterialTheme.colorScheme.background
+            NavigationBar(
+                containerColor = Color.Transparent,
+                tonalElevation = 0.dp,
+                contentColor = primaryColor,
+                windowInsets = WindowInsets(0),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.Transparent,
+                                0.25f to bgColor.copy(alpha = 0.5f),
+                                0.5f to bgColor.copy(alpha = 0.8f),
+                                0.8f to bgColor,
+                                1.0f to bgColor
+                            )
+                        )
+                    )
+            ) {
+                Spacer(modifier = Modifier.width(4.dp))
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.CalendarMonth, null) },
+                    label = { Text("Strava") },
+                    selected = currentRoute == Screen.StravaCalendar.name,
+                    onClick  = { navigate(Screen.StravaCalendar.name) },
+                    colors = navBarColors
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.FitnessCenter, null) },
+                    label = { Text("Workouts") },
+                    selected = currentRoute == Screen.Workouts.name,
+                    onClick  = { navigate(Screen.Workouts.name) },
+                    colors = navBarColors
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Dashboard, null) },
+                    label = { Text("Summary") },
+                    selected = currentRoute == Screen.Summary.name,
+                    onClick  = { navigate(Screen.Summary.name) },
+                    colors = navBarColors
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.MonitorWeight, null) },
+                    label = { Text("Weight") },
+                    selected = currentRoute == Screen.WeightTracking.name,
+                    onClick  = { navigate(Screen.WeightTracking.name) },
+                    colors = navBarColors
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Timer, null) },
+                    label = { Text("Timer") },
+                    selected = currentRoute == Screen.WorkoutTimer.name,
+                    onClick  = { navigate(Screen.WorkoutTimer.name) },
+                    colors = navBarColors
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            } // end Box
         }
     }
 }

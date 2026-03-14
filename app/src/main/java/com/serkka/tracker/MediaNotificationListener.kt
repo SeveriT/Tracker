@@ -1,6 +1,7 @@
 package com.serkka.tracker
 
 import android.content.ComponentName
+import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -16,7 +17,8 @@ data class SongInfo(
     val isPlaying: Boolean = false,
     val packageName: String? = null,
     val position: Long?,
-    val duration: Long?
+    val duration: Long?,
+    val albumArt: Bitmap? = null
 )
 
 class MediaNotificationListener : NotificationListenerService() {
@@ -79,13 +81,17 @@ class MediaNotificationListener : NotificationListenerService() {
         val playbackState = activeController?.playbackState
         val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING
         
+        val albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+
         val info = SongInfo(
             title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
             artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
             isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING,
             packageName = activeController?.packageName,
             position = playbackState?.position,
-            duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION)
+            duration = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION),
+            albumArt = albumArt
         )
         mediaRepository.updateSong(info)
 

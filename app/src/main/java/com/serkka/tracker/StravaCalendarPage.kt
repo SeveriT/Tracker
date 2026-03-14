@@ -147,7 +147,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                     Spacer(modifier = Modifier.height(32.dp))
                 }
 
-                item { Spacer(modifier = Modifier.height(70.dp)) }
+                item { Spacer(modifier = Modifier.height(140.dp)) }
             }
         }
     }
