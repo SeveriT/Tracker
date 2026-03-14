@@ -12,8 +12,11 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -65,6 +68,7 @@ fun SettingsPage(
     val activities by stravaViewModel.activities.collectAsState()
     val isLoading by stravaViewModel.isLoading.collectAsState()
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showUserGuide by remember { mutableStateOf(false) }
 
     // ── Google Sign-In ────────────────────────────────────────────────────────
     val gso = remember {
@@ -171,6 +175,33 @@ fun SettingsPage(
     ) {
         item {
             Text(
+                "Support",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                SettingsButton(
+                    label = "User Guide",
+                    icon = Icons.AutoMirrored.Filled.HelpOutline,
+                    containerColor = primaryColor,
+                    onClick = { showUserGuide = true },
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                )
+            }
+        }
+
+        item {
+            Text(
                 "Profile",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
@@ -204,11 +235,6 @@ fun SettingsPage(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        "Height",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -345,6 +371,8 @@ fun SettingsPage(
                 }
             }
         }
+
+
 
         item {
             Text(
@@ -525,6 +553,45 @@ fun SettingsPage(
                 TextButton(onClick = { showDeleteConfirmDialog = false }) { Text("Cancel") }
             }
         )
+    }
+
+    if (showUserGuide) {
+        UserGuideDialog(onDismiss = { showUserGuide = false })
+    }
+}
+
+@Composable
+fun UserGuideDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("User Guide", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 450.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                GuideSection("1. Navigation", "Switch between Timer, Workouts, Summary, Weight, and Strava. Swipe horizontally to glide between screens.")
+                GuideSection("2. Workout Timer", "Start/Pause with the main button. Tap the timer ring to start a new lap. Use the status bar notification to track time outside the app.")
+                GuideSection("3. Logging Workouts", "Add sets and reps using the (+) button. Suggestions from your history will appear as you type.")
+                GuideSection("4. Music Widget", "Control Spotify directly. The progress bar waves while music plays. Tap to open Spotify, skip forward, or long-press to skip back.")
+                GuideSection("5. Backups", "Enable Google Drive backups in settings to keep your data safe and synced across devices.")
+                GuideSection("6. Customization", "Change your primary accent color using the RGB sliders in Settings. The entire UI will adapt to your choice.")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Got it") }
+        }
+    )
+}
+
+@Composable
+private fun GuideSection(title: String, description: String) {
+    Column {
+        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text(description, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
