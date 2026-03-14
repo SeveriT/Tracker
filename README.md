@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/SeveriT/Overclock/blob/master/app/src/main/res/mipmap-hdpi/app_logo_foreground.webp?raw=true" width="96" />
+  <img src="https://github.com/SeveriT/Overclock/blob/master/app/src/main/res/mipmap-hdpi/app_logo_foreground.png?raw=true" width="96" />
 </p>
 
 <h1 align="center">Overclock</h1>
