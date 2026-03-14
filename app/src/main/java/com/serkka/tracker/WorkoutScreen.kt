@@ -250,11 +250,11 @@ fun WorkoutScreen(
             Box(modifier = Modifier.fillMaxSize()) {
             // Screens that can be swiped between (matches bottom nav order)
             val swipeScreens = listOf(
-                Screen.StravaCalendar.name,
+                Screen.WorkoutTimer.name,
                 Screen.Workouts.name,
                 Screen.Summary.name,
                 Screen.WeightTracking.name,
-                Screen.WorkoutTimer.name
+                Screen.StravaCalendar.name
             )
             val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
@@ -706,10 +706,10 @@ fun WorkoutScreen(
             ) {
                 Spacer(modifier = Modifier.width(4.dp))
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.CalendarMonth, null) },
-                    label = { Text("Strava") },
-                    selected = currentRoute == Screen.StravaCalendar.name,
-                    onClick  = { navigate(Screen.StravaCalendar.name) },
+                    icon = { Icon(Icons.Default.Timer, null) },
+                    label = { Text("Timer") },
+                    selected = currentRoute == Screen.WorkoutTimer.name,
+                    onClick  = { navigate(Screen.WorkoutTimer.name) },
                     colors = navBarColors
                 )
                 NavigationBarItem(
@@ -734,10 +734,10 @@ fun WorkoutScreen(
                     colors = navBarColors
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Timer, null) },
-                    label = { Text("Timer") },
-                    selected = currentRoute == Screen.WorkoutTimer.name,
-                    onClick  = { navigate(Screen.WorkoutTimer.name) },
+                    icon = { Icon(Icons.Default.CalendarMonth, null) },
+                    label = { Text("Strava") },
+                    selected = currentRoute == Screen.StravaCalendar.name,
+                    onClick  = { navigate(Screen.StravaCalendar.name) },
                     colors = navBarColors
                 )
                 Spacer(modifier = Modifier.width(4.dp))
