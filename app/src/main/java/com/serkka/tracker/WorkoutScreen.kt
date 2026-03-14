@@ -16,7 +16,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +36,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -62,7 +66,7 @@ fun WavyProgressIndicator(
     val infiniteTransition = rememberInfiniteTransition(label = "wave")
     val waveOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 2f * Math.PI.toFloat(),
+        targetValue = (2 * Math.PI).toFloat(),
         animationSpec = infiniteRepeatable(
             animation = tween(1800, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
@@ -72,12 +76,11 @@ fun WavyProgressIndicator(
 
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
-        animationSpec = tween(durationMillis = 2000, easing = LinearOutSlowInEasing),
+        animationSpec = tween(durationMillis = 1000, easing = LinearOutSlowInEasing),
         label = "progress"
     )
 
     Box(modifier = modifier.height(12.dp)) {
-        // Track
         Canvas(modifier = Modifier.fillMaxSize()) {
             val centerY = size.height / 2
             drawLine(
@@ -89,7 +92,6 @@ fun WavyProgressIndicator(
             )
         }
 
-        // Progress
         Canvas(modifier = Modifier.fillMaxSize()) {
             val width = size.width * animatedProgress.coerceIn(0f, 1f)
             if (width <= 0f) return@Canvas
@@ -102,10 +104,11 @@ fun WavyProgressIndicator(
                 val startY = if (isPlaying) centerY + amplitude * sin(waveOffset) else centerY
                 moveTo(0f, startY)
                 if (isPlaying && amplitude > 0f) {
-                    for (i in 0..width.toInt() step 2) {
-                        val x = i.toFloat()
+                    var x = 0f
+                    while (x < width) {
                         val y = centerY + amplitude * sin(x * (2 * Math.PI.toFloat() / wavelength) + waveOffset)
                         lineTo(x, y)
+                        x += 2f
                     }
                 } else {
                     lineTo(width, centerY)
@@ -121,6 +124,17 @@ fun WavyProgressIndicator(
     }
 }
 
+@Composable
+private fun ElasticColumnWrapper(
+    listState: LazyListState,
+    content: @Composable () -> Unit
+) {
+    // Column scaling removed as it was reported as clunky
+    Box(modifier = Modifier.fillMaxSize()) {
+        content()
+    }
+}
+
 
 @Composable
 fun WorkoutScreen(
@@ -132,8 +146,8 @@ fun WorkoutScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val haptic = LocalHapticFeedback.current
 
-    // Fetch Strava activities once on app launch only
     LaunchedEffect(Unit) {
         stravaViewModel.checkAndFetchActivities()
     }
@@ -141,7 +155,6 @@ fun WorkoutScreen(
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: Screen.Summary.name
 
-    // ── List states (preserved across nav) ───────────────────────────────────
     val workoutsListState = rememberLazyListState()
     val summaryListState  = rememberLazyListState()
     val weightListState   = rememberLazyListState()
@@ -187,7 +200,6 @@ fun WorkoutScreen(
     val timerElapsed   by timerViewModel.elapsedSeconds.collectAsState()
     val primaryColor   by themeViewModel.primaryColor.collectAsState()
 
-    /** Navigate with single-top + state restore — no back stack buildup on repeated taps. */
     fun navigate(route: String) = navController.navigate(route) {
         popUpTo(Screen.Summary.name) { saveState = true }
         launchSingleTop = true
@@ -197,13 +209,13 @@ fun WorkoutScreen(
     val navBarColors = NavigationBarItemDefaults.colors(
         selectedIconColor = MaterialTheme.colorScheme.primary,
         selectedTextColor = MaterialTheme.colorScheme.primary,
-        indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+        indicatorColor = Color.Transparent,
     )
 
     val drawerItemColors: @Composable () -> NavigationDrawerItemColors = {
         NavigationDrawerItemDefaults.colors(
             selectedContainerColor = primaryColor.copy(alpha = 0.1f),
-            unselectedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+            unselectedContainerColor = Color.Transparent,
             selectedIconColor = primaryColor,
             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             selectedTextColor = primaryColor,
@@ -274,12 +286,22 @@ fun WorkoutScreen(
                         )
                     },
                     actions = {
-                        // Live timer pill — visible on all screens except the timer itself
                         AnimatedVisibility(
                             visible = timerIsRunning && currentRoute != Screen.WorkoutTimer.name,
                             enter   = fadeIn() + slideInHorizontally { it },
                             exit    = fadeOut() + slideOutHorizontally { it }
                         ) {
+                            val infinitePulse = rememberInfiniteTransition(label = "pulse")
+                            val pulseScale by infinitePulse.animateFloat(
+                                initialValue = 1f,
+                                targetValue = 1.03f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(1200, easing = FastOutSlowInEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "scale"
+                            )
+
                             AssistChip(
                                 onClick = { navigate(Screen.WorkoutTimer.name) },
                                 label = {
@@ -297,7 +319,7 @@ fun WorkoutScreen(
                                     labelColor = MaterialTheme.colorScheme.surface,
                                     leadingIconContentColor = MaterialTheme.colorScheme.surface
                                 ),
-                                modifier = Modifier.padding(end = 4.dp)
+                                modifier = Modifier.padding(end = 4.dp).graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
                             )
                         }
                         IconButton(onClick = { navigate(Screen.Notes.name) }) {
@@ -316,13 +338,9 @@ fun WorkoutScreen(
                     )
                 )
             },
-
             bottomBar = {},
-
-
         ) { innerPadding ->
             Box(modifier = Modifier.fillMaxSize()) {
-            // Screens that can be swiped between (matches bottom nav order)
             val swipeScreens = listOf(
                 Screen.WorkoutTimer.name,
                 Screen.Workouts.name,
@@ -330,7 +348,6 @@ fun WorkoutScreen(
                 Screen.WeightTracking.name,
                 Screen.StravaCalendar.name
             )
-            val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
             NavHost(
                 navController = navController,
@@ -353,7 +370,7 @@ fun WorkoutScreen(
                                         else -> null
                                     }
                                     target?.let {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         navigate(it)
                                     }
                                 }
@@ -365,51 +382,59 @@ fun WorkoutScreen(
                 exitTransition  = { fadeOut(animationSpec = tween(300)) }
             ) {
                 composable(Screen.Summary.name) {
-                    SummaryPage(
-                        workouts = workouts,
-                        bodyWeights = bodyWeights,
-                        stravaViewModel = stravaViewModel,
-                        primaryColor = primaryColor,
-                        onWorkoutEdit   = { editingWorkout = it },
-                        onWorkoutDelete = { workoutToDelete = it },
-                        onWorkoutCopy   = { copyingWorkout = it },
-                        onNavigateToWeightTracking = { navigate(Screen.WeightTracking.name) },
-                        listState = summaryListState
-                    )
+                    ElasticColumnWrapper(summaryListState) {
+                        SummaryPage(
+                            workouts = workouts,
+                            bodyWeights = bodyWeights,
+                            stravaViewModel = stravaViewModel,
+                            primaryColor = primaryColor,
+                            onWorkoutEdit   = { editingWorkout = it },
+                            onWorkoutDelete = { workoutToDelete = it },
+                            onWorkoutCopy   = { copyingWorkout = it },
+                            onNavigateToWeightTracking = { navigate(Screen.WeightTracking.name) },
+                            listState = summaryListState
+                        )
+                    }
                 }
                 composable(Screen.Workouts.name) {
-                    WorkoutListContent(
-                        workouts = workouts,
-                        primaryColor = primaryColor,
-                        onDelete  = { workoutToDelete = it },
-                        onEdit    = { editingWorkout = it },
-                        onCopy    = { copyingWorkout = it },
-                        listState = workoutsListState
-                    )
+                    ElasticColumnWrapper(workoutsListState) {
+                        WorkoutListContent(
+                            workouts = workouts,
+                            primaryColor = primaryColor,
+                            onDelete  = { workoutToDelete = it },
+                            onEdit    = { editingWorkout = it },
+                            onCopy    = { copyingWorkout = it },
+                            listState = workoutsListState
+                        )
+                    }
                 }
                 composable(Screen.StravaCalendar.name) {
                     StravaCalendarPage(stravaViewModel, primaryColor)
                 }
                 composable(Screen.WeightTracking.name) {
-                    WeightTrackingPage(
-                        bodyWeights = bodyWeights,
-                        primaryColor = primaryColor,
-                        onWeightClick  = { editingWeight = it },
-                        onWeightDelete = { weightToDelete = it },
-                        listState = weightListState
-                    )
+                    ElasticColumnWrapper(weightListState) {
+                        WeightTrackingPage(
+                            bodyWeights = bodyWeights,
+                            primaryColor = primaryColor,
+                            onWeightClick  = { editingWeight = it },
+                            onWeightDelete = { weightToDelete = it },
+                            listState = weightListState
+                        )
+                    }
                 }
                 composable(Screen.WorkoutStats.name) {
                     WorkoutStatsPage(workouts, primaryColor)
                 }
                 composable(Screen.Notes.name) {
-                    NotesPage(
-                        notes = notesList,
-                        primaryColor = primaryColor,
-                        onNoteClick  = { editingNote = it },
-                        onNoteDelete = { noteToDelete = it },
-                        listState = notesListState
-                    )
+                    ElasticColumnWrapper(notesListState) {
+                        NotesPage(
+                            notes = notesList,
+                            primaryColor = primaryColor,
+                            onNoteClick  = { editingNote = it },
+                            onNoteDelete = { noteToDelete = it },
+                            listState = notesListState
+                        )
+                    }
                 }
                 composable(Screen.Settings.name) {
                     SettingsPage(
@@ -547,18 +572,29 @@ fun WorkoutScreen(
             val fabScreens = setOf(Screen.Workouts.name, Screen.WeightTracking.name, Screen.Notes.name)
             val hasMusicWidget = currentSong.title != null && currentSong.packageName == "com.spotify.music"
 
-            if (hasMusicWidget) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 80.dp)
-                ) {
-                    // Music widget — full width
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 80.dp)
+            ) {
+                if (hasMusicWidget) {
+                    val musicInteractionSource = remember { MutableInteractionSource() }
+                    val musicPressed by musicInteractionSource.collectIsPressedAsState()
+                    val musicScale by animateFloatAsState(
+                        targetValue = if (musicPressed) 0.985f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = if (musicPressed) Spring.StiffnessLow else Spring.StiffnessMedium
+                        ),
+                        label = "scale"
+                    )
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .graphicsLayer(scaleX = musicScale, scaleY = musicScale)
                             .padding(top = if (isFabVisible && currentRoute in fabScreens) 80.dp else 0.dp)
                     ) {
                         Box(
@@ -577,9 +613,6 @@ fun WorkoutScreen(
                                     modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    val haptic = LocalHapticFeedback.current
-
-                                    // Album art
                                     currentSong.albumArt?.let { bitmap ->
                                         androidx.compose.foundation.Image(
                                             bitmap = bitmap.asImageBitmap(),
@@ -592,10 +625,12 @@ fun WorkoutScreen(
                                         Spacer(Modifier.width(4.dp))
                                     }
 
-
                                     Column(
                                         modifier = Modifier.weight(1f).padding(horizontal = 10.dp)
-                                            .clickable { MediaRepository.getInstance().openApp() }
+                                            .clickable(
+                                                interactionSource = musicInteractionSource,
+                                                indication = null
+                                            ) { MediaRepository.getInstance().openApp() }
                                     ) {
                                         Text(
                                             text = currentSong.title ?: "",
@@ -632,7 +667,6 @@ fun WorkoutScreen(
                                             modifier = Modifier.size(28.dp)
                                         )
                                     }
-                                    // Play/Pause
                                     Box(
                                         modifier = Modifier.size(52.dp).clip(CircleShape)
                                             .combinedClickable(onClick = {
@@ -665,97 +699,66 @@ fun WorkoutScreen(
                             }
                         }
                     }
+                }
 
-                    // FAB floating top-right above the music widget
-                    AnimatedVisibility(
-                        visible = isFabVisible && currentRoute in fabScreens,
-                        enter = fadeIn() + scaleIn(),
-                        exit  = fadeOut() + scaleOut(),
-                        modifier = Modifier.align(Alignment.TopEnd)
+                AnimatedVisibility(
+                    visible = isFabVisible && currentRoute in fabScreens,
+                    enter = fadeIn() + scaleIn(),
+                    exit  = fadeOut() + scaleOut(),
+                    modifier = Modifier.align(if (hasMusicWidget) Alignment.TopEnd else Alignment.BottomEnd)
+                        .padding(bottom = if (hasMusicWidget) 0.dp else 25.dp)
+                ) {
+                    val fabInteractionSource = remember { MutableInteractionSource() }
+                    val fabPressed by fabInteractionSource.collectIsPressedAsState()
+                    val fabScale by animateFloatAsState(
+                        targetValue = if (fabPressed) 0.96f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = if (fabPressed) Spring.StiffnessLow else Spring.StiffnessMedium
+                        ),
+                        label = "scale"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(70.dp)
+                            .graphicsLayer(scaleX = fabScale, scaleY = fabScale)
+                            .clip(MaterialTheme.shapes.large)
+                            .background(Color.Black.copy(alpha = 0.95f))
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(70.dp)
-                                .clip(MaterialTheme.shapes.large)
-                                .background(Color.Black.copy(alpha = 0.95f))
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            shape = MaterialTheme.shapes.large,
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                shape = MaterialTheme.shapes.large,
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().combinedClickable(onClick = {
+                            Box(
+                                modifier = Modifier.fillMaxSize().combinedClickable(
+                                    interactionSource = fabInteractionSource,
+                                    indication = ripple(),
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         when (currentRoute) {
                                             Screen.Workouts.name -> showAddWorkoutDialog = true
                                             Screen.WeightTracking.name -> { viewModel.prepareNewEntry(); showAddWeightDialog = true }
                                             Screen.Notes.name -> showAddNoteDialog = true
                                         }
-                                    }),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = if (currentRoute == Screen.WeightTracking.name)
-                                            Icons.Default.MonitorWeight else Icons.Default.Add,
-                                        contentDescription = "Add",
-                                        tint = primaryColor,
-                                        modifier = Modifier.size(36.dp)
-                                    )
-                                }
+                                    }
+                                ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (currentRoute == Screen.WeightTracking.name)
+                                        Icons.Default.MonitorWeight else Icons.Default.Add,
+                                    contentDescription = "Add",
+                                    tint = primaryColor,
+                                    modifier = Modifier.size(36.dp)
+                                )
                             }
                         }
                     }
                 }
-            } else {
-                // No music — show FAB at bottom end
-                AnimatedVisibility(
-                    visible = isFabVisible && currentRoute in fabScreens,
-                    enter = fadeIn() + scaleIn(),
-                    exit  = fadeOut() + scaleOut(),
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = 105.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(MaterialTheme.shapes.large)
-                            .background(Color.Black.copy(alpha = 0.95f))
-                    ) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
-                            shape = MaterialTheme.shapes.large,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                        when (currentRoute) {
-                        Screen.Workouts.name -> FloatingActionButton(
-                            onClick = { showAddWorkoutDialog = true },
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = primaryColor,
-                            elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                            modifier = Modifier.size(70.dp)
-                        ) { Icon(Icons.Default.Add, "Add Workout", modifier = Modifier.size(36.dp)) }
-                        Screen.WeightTracking.name -> FloatingActionButton(
-                            onClick = { viewModel.prepareNewEntry(); showAddWeightDialog = true },
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = primaryColor,
-                            elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                            modifier = Modifier.size(70.dp)
-                        ) { Icon(Icons.Default.MonitorWeight, "Add Weight") }
-                        Screen.Notes.name -> FloatingActionButton(
-                            onClick = { showAddNoteDialog = true },
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = primaryColor,
-                            elevation = FloatingActionButtonDefaults.elevation(4.dp),
-                            modifier = Modifier.size(70.dp)
-                        ) { Icon(Icons.Default.Add, "Add Note", modifier = Modifier.size(36.dp)) }
-                    }
-                }
-                    }
-                }
             }
 
-            // ── Gradient nav bar ──────────────────────────────────────────────
             val bgColor = MaterialTheme.colorScheme.background
             NavigationBar(
                 containerColor = Color.Transparent,
@@ -815,7 +818,7 @@ fun WorkoutScreen(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
             }
-            } // end Box
+            }
         }
     }
 }
