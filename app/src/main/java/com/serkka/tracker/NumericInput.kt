@@ -18,6 +18,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -29,7 +31,9 @@ fun NumericInput(
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
-    step: Float = 1f
+    step: Float = 1f,
+    imeAction: ImeAction = ImeAction.Default,
+    onNext: (() -> Unit)? = null
 ) {
     val isInteger = step % 1 == 0f
 
@@ -45,7 +49,12 @@ fun NumericInput(
         },
         modifier = modifier,
         keyboardOptions = KeyboardOptions(
-            keyboardType = if (isInteger) KeyboardType.Number else KeyboardType.Decimal
+            keyboardType = if (isInteger) KeyboardType.Number else KeyboardType.Decimal,
+            imeAction = imeAction
+        ),
+        keyboardActions = KeyboardActions(
+            onNext = { onNext?.invoke() },
+            onDone = { onNext?.invoke() }
         ),
         singleLine = true,
         textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 14.sp),

@@ -10,7 +10,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
-class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() {
+class WorkoutViewModel(
+    private val repository: WorkoutRepository
+) : ViewModel() {
 
     // Automatically updates the UI whenever the database changes
     val allWorkouts: StateFlow<List<Workout>> = repository.getAllWorkouts()

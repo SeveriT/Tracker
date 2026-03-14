@@ -2,6 +2,7 @@
 
 package com.serkka.tracker
 
+import android.content.Context
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -61,6 +63,11 @@ fun WeightTrackingPage(
         }
     }
 
+    // ── Height preference for BMI ─────────────────────────────────────────────
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("tracker_prefs", Context.MODE_PRIVATE) }
+    var heightCm by remember { mutableStateOf(prefs.getFloat("height_cm", 0f)) }
+
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
@@ -79,6 +86,7 @@ fun WeightTrackingPage(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            // ── Left: weight + BMI ───────────────────────────
                             Column {
                                 Text(
                                     "Current Weight",
@@ -92,8 +100,45 @@ fun WeightTrackingPage(
                                     color = primaryColor,
                                     fontWeight = FontWeight.Bold
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                if (heightCm > 0f) {
+                                    val heightM = heightCm / 100f
+                                    val bmi = sortedWeights.last().weight / (heightM * heightM)
+                                    val bmiCategory = when {
+                                        bmi < 18.5f -> "Underweight"
+                                        bmi < 25f   -> "Normal"
+                                        bmi < 30f   -> "Overweight"
+                                        else        -> "Obese"
+                                    }
+                                    val bmiColor = when {
+                                        bmi < 18.5f -> Color(0xFF6693EB)
+                                        bmi < 25f   -> Color(0xFF4AC067)
+                                        bmi < 30f   -> Color(0xFFECFE72)
+                                        else        -> Color(0xFFFF7043)
+                                    }
+                                    Text(
+                                        "BMI ${String.format(Locale.getDefault(), "%.1f", bmi)} · $bmiCategory",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = bmiColor,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                } else {
+                                    TextButton(
+                                        onClick = { /* handled below via heightCm dialog */ },
+                                        contentPadding = PaddingValues(0.dp),
+                                        modifier = Modifier.height(24.dp)
+                                    ) {
+                                        Text(
+                                            "Set height for BMI",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                             }
-                            prediction?.let { (_, rate) ->
+
+                            // ── Right: trend + 30-day prediction ────────────
+                            prediction?.let { (pred, rate) ->
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
                                         "Trend",
@@ -107,17 +152,21 @@ fun WeightTrackingPage(
                                         color = if (rate <= 0) Color(0xFF46CE46).copy(alpha = 0.8f) else Color(0xFFEE3E3E).copy(alpha = 0.8f),
                                         fontWeight = FontWeight.Bold
                                     )
-                                }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "30-Day Prediction",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "${String.format(Locale.getDefault(), "%.1f", pred)} kg",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = if (pred > sortedWeights.last().weight) Color(0xFFEE3E3E).copy(alpha = 0.8f) else Color(0xFF46CE46).copy(alpha = 0.8f),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                } //color = if (pred <= 0) Color(0xFF46CE46).copy(alpha = 0.8f) else Color(0xFFEE3E3E).copy(alpha = 0.8f),
                             }
-                        }
-
-                        prediction?.let { (pred, _) ->
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                "30-Day Prediction: ${String.format(Locale.getDefault(), "%.1f", pred)} kg",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                            )
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

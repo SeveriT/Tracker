@@ -41,6 +41,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.serkka.tracker.ui.theme.DarkSurfaceColor
 
+
 @Composable
 fun WorkoutScreen(
     viewModel: WorkoutViewModel,
@@ -51,6 +52,11 @@ fun WorkoutScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    // Fetch Strava activities once on app launch only
+    LaunchedEffect(Unit) {
+        stravaViewModel.checkAndFetchActivities()
+    }
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: Screen.Summary.name

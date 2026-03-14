@@ -2,6 +2,7 @@
 
 package com.serkka.tracker
 
+import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -22,6 +23,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -50,8 +52,10 @@ fun SummaryPage(
     onNavigateToWeightTracking: () -> Unit,
     listState: LazyListState = rememberLazyListState()
 ) {
+    val context = LocalContext.current
     val activities by stravaViewModel.activities.collectAsState()
     val isLoading by stravaViewModel.isLoading.collectAsState()
+    val savedToken by stravaViewModel.savedToken.collectAsState()
     var refreshTrigger by remember { mutableStateOf(false) }
 
     val isRefreshing = refreshTrigger && isLoading
@@ -88,15 +92,15 @@ fun SummaryPage(
         }
     }
 
-    LaunchedEffect(Unit) {
-        stravaViewModel.checkAndFetchActivities()
-    }
-
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
-            refreshTrigger = true
-            stravaViewModel.checkAndFetchActivities()
+            if (savedToken.isBlank()) {
+                Toast.makeText(context, "Link Strava to refresh activities", Toast.LENGTH_SHORT).show()
+            } else {
+                refreshTrigger = true
+                stravaViewModel.checkAndFetchActivities()
+            }
         }
     ) {
         LazyColumn(

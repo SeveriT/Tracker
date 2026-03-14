@@ -15,7 +15,6 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.serkka.tracker.ui.theme.GymTrackerTheme
 import java.util.concurrent.TimeUnit
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
@@ -24,7 +23,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
 

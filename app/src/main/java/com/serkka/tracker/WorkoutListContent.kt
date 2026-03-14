@@ -24,6 +24,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -199,6 +202,12 @@ fun WorkoutDialog(
     )
     var showDatePicker by remember { mutableStateOf(false) }
 
+    val focusExercise = remember { FocusRequester() }
+    val focusSets     = remember { FocusRequester() }
+    val focusReps     = remember { FocusRequester() }
+    val focusWeight   = remember { FocusRequester() }
+    val focusNotes    = remember { FocusRequester() }
+
     val lastPerformance = remember(exercise, history) {
         history.find { it.exerciseName.equals(exercise, ignoreCase = true) }
     }
@@ -266,8 +275,15 @@ fun WorkoutDialog(
                         value = exercise,
                         onValueChange = { exercise = it; expanded = true },
                         label = { Text("Exercise") },
-                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth()
+                            .focusRequester(focusExercise),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Words,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                            onNext = { focusSets.requestFocus() }
+                        ),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                     )
@@ -309,8 +325,12 @@ fun WorkoutDialog(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    NumericInput(value = sets, onValueChange = { sets = it }, label = "Sets", modifier = Modifier.weight(1f))
-                    NumericInput(value = reps, onValueChange = { reps = it }, label = "Reps", modifier = Modifier.weight(1f))
+                    NumericInput(value = sets, onValueChange = { sets = it }, label = "Sets",
+                        modifier = Modifier.weight(1f).focusRequester(focusSets),
+                        imeAction = ImeAction.Next, onNext = { focusReps.requestFocus() })
+                    NumericInput(value = reps, onValueChange = { reps = it }, label = "Reps",
+                        modifier = Modifier.weight(1f).focusRequester(focusReps),
+                        imeAction = ImeAction.Next, onNext = { focusWeight.requestFocus() })
                 }
 
                 Row(
@@ -321,8 +341,10 @@ fun WorkoutDialog(
                         value = weight,
                         onValueChange = { weight = it },
                         label = "Weight (kg)",
-                        modifier = Modifier.weight(0.5f),
-                        step = 2.5f
+                        modifier = Modifier.weight(0.5f).focusRequester(focusWeight),
+                        step = 2.5f,
+                        imeAction = ImeAction.Next,
+                        onNext = { focusNotes.requestFocus() }
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -342,9 +364,12 @@ fun WorkoutDialog(
                     value = notes,
                     onValueChange = { notes = it },
                     label = { Text("Notes") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focusNotes),
                     maxLines = 3,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done
+                    )
                 )
 
                 OutlinedTextField(

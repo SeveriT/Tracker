@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil.compose.AsyncImage
+import com.serkka.tracker.TrackerColors.StravaOrange
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -42,6 +43,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
     val activities by stravaViewModel.activities.collectAsState()
     val isLoading by stravaViewModel.isLoading.collectAsState()
     val error by stravaViewModel.error.collectAsState()
+    val savedToken by stravaViewModel.savedToken.collectAsState()
     val profilePicUrl by stravaViewModel.profilePicUrl.collectAsState()
     var refreshTrigger by remember { mutableStateOf(false) }
 
@@ -62,8 +64,12 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
-            refreshTrigger = true
-            stravaViewModel.checkAndFetchActivities()
+            if (savedToken.isBlank()) {
+                Toast.makeText(context, "Link Strava to refresh activities", Toast.LENGTH_SHORT).show()
+            } else {
+                refreshTrigger = true
+                stravaViewModel.checkAndFetchActivities()
+            }
         }
     ) {
         LazyColumn(
@@ -88,7 +94,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                             context.startActivity(Intent(Intent.ACTION_VIEW, authUri))
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = primaryColor, contentColor = Color.Black
+                            containerColor = StravaOrange, contentColor = Color.Black
                         )
                     ) {
                         Text("Login with Strava", fontSize = 18.sp)

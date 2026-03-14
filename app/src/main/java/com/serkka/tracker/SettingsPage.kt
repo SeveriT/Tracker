@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +38,7 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
+import com.serkka.tracker.TrackerColors.StravaOrange
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -168,6 +171,121 @@ fun SettingsPage(
     ) {
         item {
             Text(
+                "Profile",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        item {
+            val prefs = remember {
+                context.getSharedPreferences("tracker_prefs", android.content.Context.MODE_PRIVATE)
+            }
+            var heightInput by remember {
+                mutableStateOf(
+                    prefs.getFloat("height_cm", 0f).let { h ->
+                        if (h > 0f) h.toInt().toString() else ""
+                    }
+                )
+            }
+            var saved by remember { mutableStateOf(false) }
+
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth().animateContentSize(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Height",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = heightInput,
+                            onValueChange = { v ->
+                                if (v.length <= 3 && v.all { it.isDigit() }) {
+                                    heightInput = v
+                                    saved = false
+                                }
+                            },
+                            label = { Text("Height (cm)") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            trailingIcon = {
+                                if (heightInput.isNotEmpty()) {
+                                    Text(
+                                        "cm",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(end = 12.dp)
+                                    )
+                                }
+                            }
+                        )
+                        Button(
+                            onClick = {
+                                val h = heightInput.toIntOrNull()
+                                if (h != null && h in 100..250) {
+                                    prefs.edit().putFloat("height_cm", h.toFloat()).apply()
+                                    saved = true
+                                }
+                            },
+                            enabled = heightInput.toIntOrNull()?.let { it in 100..250 } == true,
+                            modifier = Modifier.height(50.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = primaryColor,
+                                contentColor = Color.Black,
+                                disabledContainerColor = primaryColor.copy(alpha = 0.3f),
+                                disabledContentColor = Color.Black.copy(alpha = 0.3f)
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(8.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    if (saved) Icons.Default.Check else Icons.Default.Save,
+                                    contentDescription = "Save height",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    if (saved) "Saved" else "Save",
+                                    fontSize = 12.sp,
+                                    textAlign = TextAlign.Left
+                                )
+                            }
+                        }
+                    }
+                    if (heightInput.toIntOrNull()?.let { it !in 100..250 } == true) {
+                        Text(
+                            "Enter a value between 100–250 cm",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            Text(
                 "Appearance",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
@@ -229,6 +347,15 @@ fun SettingsPage(
         }
 
         item {
+            Text(
+                "Data Backup & Restore",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        item {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth().animateContentSize(),
                 colors = CardDefaults.cardColors(
@@ -242,12 +369,6 @@ fun SettingsPage(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        "Data Backup & Restore",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
 
                     NextBackupCountdown(primaryColor = primaryColor)
 
@@ -306,7 +427,7 @@ fun SettingsPage(
                             SettingsButton(
                                 label = "Login with Strava",
                                 icon = Icons.Default.DirectionsRun,
-                                containerColor = primaryColor,
+                                containerColor = StravaOrange,
                                 onClick = {
                                     val authUri = "https://www.strava.com/oauth/mobile/authorize".toUri()
                                         .buildUpon()
@@ -329,7 +450,7 @@ fun SettingsPage(
                             SettingsButton(
                                 label = "Strava Sign Out",
                                 icon = Icons.Default.DirectionsRun,
-                                containerColor = MaterialTheme.colorScheme.error,
+                                containerColor = StravaOrange,
                                 onClick = {
                                     stravaViewModel.logout()
                                     Toast.makeText(context, "Strava signed out", Toast.LENGTH_SHORT).show()
@@ -356,6 +477,8 @@ fun SettingsPage(
                 }
             }
         }
+
+
 
         item { Spacer(modifier = Modifier.height(80.dp)) }
     }
