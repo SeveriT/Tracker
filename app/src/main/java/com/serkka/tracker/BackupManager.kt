@@ -19,10 +19,13 @@ class BackupManager(private val context: Context) {
         return@withContext try {
             val db = WorkoutDatabase.getDatabase(context)
             // Force a Checkpoint
-            db.query(SimpleSQLiteQuery("PRAGMA wal_checkpoint(FULL)")).use { cursor ->
+            val cursor = db.query(SimpleSQLiteQuery("PRAGMA wal_checkpoint(FULL)"))
+            try {
                 if (cursor.moveToFirst()) {
                     Log.d("BackupManager", "Checkpoint result: ${cursor.getInt(0)}")
                 }
+            } finally {
+                cursor.close()
             }
 
             val dbFile = context.getDatabasePath(dbName)
@@ -91,10 +94,15 @@ class BackupManager(private val context: Context) {
     private fun getFileName(uri: Uri): String? {
         var result: String? = null
         if (uri.scheme == "content") {
-            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (index != -1) result = cursor.getString(index)
+            val cursor = context.contentResolver.query(uri, null, null, null, null)
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (index != -1) result = cursor.getString(index)
+                    }
+                } finally {
+                    cursor.close()
                 }
             }
         }
@@ -105,17 +113,33 @@ class BackupManager(private val context: Context) {
     }
 
     private fun copyFile(sourceFile: File, destUri: Uri) {
-        context.contentResolver.openOutputStream(destUri)?.use { output ->
-            FileInputStream(sourceFile).use { input ->
-                input.copyTo(output)
+        val output = context.contentResolver.openOutputStream(destUri)
+        if (output != null) {
+            try {
+                val input = FileInputStream(sourceFile)
+                try {
+                    input.copyTo(output)
+                } finally {
+                    input.close()
+                }
+            } finally {
+                output.close()
             }
         }
     }
 
     private fun copyFileFromUri(sourceUri: Uri, destFile: File) {
-        context.contentResolver.openInputStream(sourceUri)?.use { input ->
-            FileOutputStream(destFile).use { output ->
-                input.copyTo(output)
+        val input = context.contentResolver.openInputStream(sourceUri)
+        if (input != null) {
+            try {
+                val output = FileOutputStream(destFile)
+                try {
+                    input.copyTo(output)
+                } finally {
+                    output.close()
+                }
+            } finally {
+                input.close()
             }
         }
     }

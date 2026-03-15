@@ -315,7 +315,7 @@ fun WeightChart(weights: List<BodyWeight>, color: Color) {
     }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val yLabelWidthPx = 46.dp.toPx()
+        val yLabelWidthPx = 30.dp.toPx()
         val xLabelHeightPx = 20.dp.toPx()
         val chartLeft   = yLabelWidthPx
         val chartBottom = size.height - xLabelHeightPx
