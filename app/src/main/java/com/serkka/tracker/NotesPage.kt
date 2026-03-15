@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -45,18 +46,23 @@ fun NotesPage(
     ) {
         if (notes.isNotEmpty()) {
             items(notes, key = { it.id }) { note ->
+                val interactionSource = remember { MutableInteractionSource() }
                 ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
                         .animateContentSize()
                         .animateItem()
-                        .clickable { onNoteClick(note) },
+                        .bounceClick(
+                            interactionSource = interactionSource,
+                            onClick = { onNoteClick(note) }
+                        ),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
+                    shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(
-                        defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp
+                        defaultElevation = 8.dp
                     )
                 ) {
                     Row(

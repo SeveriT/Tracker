@@ -84,7 +84,7 @@ fun WorkoutListContent(
                     Text(
                         text = date,
                         style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 24.dp),
+                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
                         color = primaryColor,
                         fontWeight = FontWeight.Bold
                     )
@@ -95,7 +95,7 @@ fun WorkoutListContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
+                        .padding(horizontal = 16.dp)
                         .height(IntrinsicSize.Max),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -133,24 +133,27 @@ fun WorkoutCard(
 ) {
 
     val haptic = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
 
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize()
             .padding(vertical = 4.dp)
-            .combinedClickable(
-                onClick = { onEdit() },
+            .bounceClick(
+                interactionSource = interactionSource,
                 onLongClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onCopy()
-                }
+                },
+                onClick = { onEdit() }
             ),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 12.dp, pressedElevation = 6.dp, hoveredElevation = 14.dp
+            defaultElevation = 12.dp
         )
     ) {
         Column(

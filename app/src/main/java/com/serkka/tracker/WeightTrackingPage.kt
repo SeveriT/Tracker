@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -83,8 +84,9 @@ fun WeightTrackingPage(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
+                    shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(
-                        defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp
+                        defaultElevation = 8.dp
                     )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -194,18 +196,23 @@ fun WeightTrackingPage(
             }
 
             items(sortedWeights.reversed(), key = { it.id }) { weightEntry ->
+                val interactionSource = remember { MutableInteractionSource() }
                 ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
                         .animateContentSize()
                         .animateItem()
-                        .clickable { onWeightClick(weightEntry) },
+                        .bounceClick(
+                            interactionSource = interactionSource,
+                            onClick = { onWeightClick(weightEntry) }
+                        ),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
+                    shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(
-                        defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp
+                        defaultElevation = 8.dp
                     )
                 ) {
                     Row(

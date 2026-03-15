@@ -10,6 +10,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.os.Handler
 import android.os.Looper
+import android.content.Intent
 
 data class SongInfo(
     val title: String? = null,
@@ -131,11 +132,24 @@ class MediaNotificationListener : NotificationListenerService() {
     }
 
     private fun openApp() {
+        if (activeController?.packageName == "com.spotify.music") {
+            try {
+                val intent = Intent().apply {
+                    component = ComponentName("com.spotify.music", "androidx.compose.ui.tooling.PreviewActivity")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+                return
+            } catch (e: Exception) {
+                // Fallback to default behavior if special activity fails
+            }
+        }
+        
         activeController?.sessionActivity?.send() ?: run {
             activeController?.packageName?.let { pkg ->
                 val intent = packageManager.getLaunchIntentForPackage(pkg)
                 if (intent != null) {
-                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     startActivity(intent)
                 }
             }

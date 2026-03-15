@@ -626,11 +626,28 @@ fun WorkoutScreen(
             ) {
                 if (hasMusicWidget) {
                     val musicInteractionSource = remember { MutableInteractionSource() }
+                    var dragX by remember { mutableFloatStateOf(0f) }
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .bounceClick(musicInteractionSource)
                             .padding(top = if (isFabVisible && currentRoute in fabScreens) 80.dp else 0.dp)
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures(
+                                    onDragStart = { dragX = 0f },
+                                    onDragEnd = {
+                                        if (dragX < -100f) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            MediaRepository.getInstance().nextTrack()
+                                        } else if (dragX > 100f) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            MediaRepository.getInstance().previousTrack()
+                                        }
+                                        dragX = 0f
+                                    },
+                                    onHorizontalDrag = { _, delta -> dragX += delta }
+                                )
+                            }
                     ) {
                         Box(
                             modifier = Modifier
@@ -642,6 +659,12 @@ fun WorkoutScreen(
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                             shape = MaterialTheme.shapes.large,
                             modifier = Modifier.fillMaxWidth()
+                                .clip(MaterialTheme.shapes.large)
+                                .clickable(
+                                    interactionSource = musicInteractionSource,
+                                    indication = ripple(bounded = true),
+                                    onClick = { MediaRepository.getInstance().openApp() }
+                                )
                         ) {
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Row(
@@ -656,16 +679,19 @@ fun WorkoutScreen(
                                             modifier = Modifier
                                                 .size(44.dp)
                                                 .clip(RoundedCornerShape(8.dp))
+                                                .graphicsLayer {
+                                                    translationX = dragX * 0.01f
+                                                }
                                         )
                                         Spacer(Modifier.width(4.dp))
                                     }
 
                                     Column(
                                         modifier = Modifier.weight(1f).padding(horizontal = 10.dp)
-                                            .clickable(
-                                                interactionSource = musicInteractionSource,
-                                                indication = null
-                                            ) { MediaRepository.getInstance().openApp() }
+                                            .graphicsLayer {
+                                                translationX = dragX * 0.4f
+                                                alpha = (1f - (kotlin.math.abs(dragX) / 300f)).coerceIn(0f, 1f)
+                                            }
                                     ) {
                                         Text(
                                             text = currentSong.title ?: "",
@@ -681,38 +707,13 @@ fun WorkoutScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
-                                    val nextInteractionSource = remember { MutableInteractionSource() }
-                                    Box(
-                                        modifier = Modifier.size(52.dp).clip(CircleShape)
-                                            .bounceClick(nextInteractionSource)
-                                            .combinedClickable(
-                                                interactionSource = nextInteractionSource,
-                                                indication = null,
-                                                onClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                    MediaRepository.getInstance().nextTrack()
-                                                },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    MediaRepository.getInstance().previousTrack()
-                                                }
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.SkipNext,
-                                            contentDescription = "Next",
-                                            tint = primaryColor,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                    }
+
                                     val playInteractionSource = remember { MutableInteractionSource() }
                                     Box(
                                         modifier = Modifier.size(52.dp).clip(CircleShape)
-                                            .bounceClick(playInteractionSource)
-                                            .combinedClickable(
+                                            .clickable(
                                                 interactionSource = playInteractionSource,
-                                                indication = null,
+                                                indication = ripple(bounded = false, radius = 26.dp),
                                                 onClick = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                     MediaRepository.getInstance().togglePlayPause()

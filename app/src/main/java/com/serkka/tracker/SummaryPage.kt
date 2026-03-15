@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -119,8 +120,9 @@ fun SummaryPage(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     ),
+                    shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(
-                        defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp
+                        defaultElevation = 8.dp
                     )
                 ) {
                     Column(
@@ -192,17 +194,22 @@ fun SummaryPage(
                         }.sortedBy { it.date }
                     }
 
+                    val weightInteractionSource = remember { MutableInteractionSource() }
                     ElevatedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .animateContentSize()
                             .padding(top = 8.dp)
-                            .clickable { onNavigateToWeightTracking() },
+                            .bounceClick(
+                                interactionSource = weightInteractionSource,
+                                onClick = onNavigateToWeightTracking
+                            ),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainer
                         ),
+                        shape = RoundedCornerShape(12.dp),
                         elevation = CardDefaults.cardElevation(
-                            defaultElevation = 10.dp, pressedElevation = 6.dp, hoveredElevation = 12.dp
+                            defaultElevation = 10.dp
                         )
                     ) {
                         Row(
@@ -227,7 +234,6 @@ fun SummaryPage(
                             }
 
                             if (weekWeights.size >= 2) {
-                                val surfaceColor = MaterialTheme.colorScheme.surface
                                 val trend = weekWeights.last().weight - weekWeights.first().weight
 
                                 Box(
@@ -398,8 +404,9 @@ fun SummaryPage(
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainer
                                 ),
+                                shape = RoundedCornerShape(12.dp),
                                 elevation = CardDefaults.cardElevation(
-                                    defaultElevation = 8.dp, pressedElevation = 4.dp, hoveredElevation = 10.dp
+                                    defaultElevation = 8.dp
                                 )
                             ) {
                                 Column(

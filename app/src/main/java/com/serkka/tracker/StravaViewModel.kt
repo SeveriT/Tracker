@@ -204,10 +204,21 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
                     return@launch
                 }
 
-                // Publish immediately so the UI is responsive
+                // Check if the latest activity is the same as the one we already have.
+                // If it is, we don\u0027t need to fetch individual details again.
+                val latestSavedId = prefs.getLong("latest_activity_id", -1L)
+                val latestFetchedId = response.first().id
+
+                if (latestFetchedId == latestSavedId && _activities.value.isNotEmpty()) {
+                    Log.d("StravaViewModel", "No new activities. Skipping detail fetch.")
+                    _isLoading.value = false
+                    return@launch
+                }
+
+                // Publish summary immediately
                 _activities.value = response
 
-                // Then fetch full details for the most recent DETAIL_FETCH_LIMIT activities
+                // Fetch full details only for the most recent activities
                 val detailedActivities = response
                     .take(DETAIL_FETCH_LIMIT)
                     .map { activity ->
@@ -223,7 +234,12 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
                     .awaitAll()
 
                 val detailMap     = detailedActivities.associateBy { it.id }
-                _activities.value = response.map { activity -> detailMap[activity.id] ?: activity }
+                val finalList     = response.map { activity -> detailMap[activity.id] ?: activity }
+                
+                _activities.value = finalList
+                
+                // Save the new latest ID
+                prefs.edit().putLong("latest_activity_id", latestFetchedId).apply()
 
             } catch (e: HttpException) {
                 if (e.code() == 401) {
@@ -306,6 +322,11 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
                     distance       = distanceMeters
                 )
                 _uploadState.value = UploadState.Success(activity)
+                
+                // Reset the latest activity ID so we force a refresh to see the new activity
+                prefs.edit().putLong("latest_activity_id", -1L).apply()
+                checkAndFetchActivities()
+
             } catch (e: HttpException) {
                 val msg = when (e.code()) {
                     401  -> "Strava login expired. Please reconnect in Settings."

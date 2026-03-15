@@ -2,12 +2,12 @@
 
 package com.serkka.tracker
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
@@ -24,13 +24,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
 // ── Navigation ───────────────────────────────────────────────────────────────
@@ -76,18 +76,33 @@ internal fun getIconForActivity(type: String): ImageVector = when (type) {
 
 // ── Animations ────────────────────────────────────────────────────────────────
 
-fun Modifier.bounceClick(interactionSource: InteractionSource) = composed {
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessHigh
-        ),
-        label = "bounceScale"
-    )
-    this.graphicsLayer(scaleX = scale, scaleY = scale)
-}
+/**
+ * Replaced the old spring bounce effect with a clean Material 3 ripple.
+ * This ensures consistency across buttons and interactive elements.
+ * Supports combinedClickable for long press actions.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+fun Modifier.bounceClick(
+    interactionSource: InteractionSource,
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null
+): Modifier = this.then(
+    if (onClick != null || onLongClick != null) {
+        Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .combinedClickable(
+                interactionSource = interactionSource as MutableInteractionSource,
+                indication = ripple(),
+                enabled = enabled,
+                onLongClick = onLongClick,
+                onClick = onClick ?: {}
+            )
+    } else {
+        // If used for visual feedback on an existing clickable, we clip to ensure the ripple is rounded
+        Modifier.clip(RoundedCornerShape(12.dp))
+    }
+)
 
 // ── Shared dialogs ────────────────────────────────────────────────────────────
 
