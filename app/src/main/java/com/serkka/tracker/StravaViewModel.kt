@@ -18,7 +18,6 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
-import com.serkka.tracker.BuildConfig
 
 // ---------------------------------------------------------------------------
 // Upload state for the workout timer
@@ -120,8 +119,8 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
             // Refresh silently
             Log.d("StravaViewModel", "Token near expiry, refreshing…")
             val response = stravaApi.refreshToken(
-                clientId     = "BuildConfig.clientId",
-                clientSecret = "BuildConfig.STRAVA_CLIENT_SECRET",
+                clientId     = STRAVA_CLIENT_ID,
+                clientSecret = STRAVA_CLIENT_SECRET,
                 refreshToken = refreshToken
             )
             saveTokenResponse(response)
@@ -137,8 +136,8 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
             _isLoading.value = true
             try {
                 val response = stravaApi.refreshToken(
-                    clientId      = "BuildConfig.clientId",
-                    clientSecret  = "BuildConfig.STRAVA_CLIENT_SECRET",
+                    clientId      = STRAVA_CLIENT_ID,
+                    clientSecret  = STRAVA_CLIENT_SECRET,
                     refreshToken  = refreshToken
                 )
                 saveTokenResponse(response)
@@ -251,8 +250,8 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
             _error.value     = null
             try {
                 val response = stravaApi.exchangeToken(
-                    clientId     = "BuildConfig.clientId",
-                    clientSecret = "BuildConfig.STRAVA_CLIENT_SECRET",
+                    clientId     = STRAVA_CLIENT_ID,
+                    clientSecret = STRAVA_CLIENT_SECRET,
                     code         = code
                 )
                 saveTokenResponse(response)

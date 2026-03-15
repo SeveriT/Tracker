@@ -48,7 +48,8 @@ enum class Screen(val title: String) {
 
 // ── Strava ────────────────────────────────────────────────────────────────────
 
-internal const val STRAVA_CLIENT_ID = "206279"
+internal val STRAVA_CLIENT_ID = BuildConfig.STRAVA_CLIENT_ID
+internal val STRAVA_CLIENT_SECRET = BuildConfig.STRAVA_CLIENT_SECRET
 
 // ── Number formatting ─────────────────────────────────────────────────────────
 

@@ -1,9 +1,19 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.inputStream())
+}
+val stravaSecret = localProperties.getProperty("STRAVA_CLIENT_SECRET") ?: "MISSING_SECRET"
+val stravaClientId = localProperties.getProperty("STRAVA_CLIENT_ID") ?: "MISSING_ID"
 
 android {
     namespace = "com.serkka.tracker"
@@ -18,6 +28,9 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+
+        buildConfigField("String", "STRAVA_CLIENT_SECRET", "\"$stravaSecret\"")
+        buildConfigField("String", "STRAVA_CLIENT_ID", "\"$stravaClientId\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
