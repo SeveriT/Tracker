@@ -8,6 +8,9 @@ plugins {
 android {
     namespace = "com.serkka.tracker"
     compileSdk = 35
+    buildFeatures {
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId = "com.serkka.tracker"

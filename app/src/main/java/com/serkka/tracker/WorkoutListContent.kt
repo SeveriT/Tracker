@@ -131,7 +131,7 @@ fun WorkoutCard(
     onCopy: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val accentColor = if (workout.isPersonalBest) PersonalBestGold else primaryColor
+
     val haptic = LocalHapticFeedback.current
 
     ElevatedCard(

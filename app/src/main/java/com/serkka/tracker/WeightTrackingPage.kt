@@ -99,7 +99,7 @@ fun WeightTrackingPage(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     "${formatWeight(sortedWeights.last().weight)} kg",
-                                    style = MaterialTheme.typography.headlineMedium,
+                                    style = MaterialTheme.typography.headlineLarge,
                                     color = primaryColor,
                                     fontWeight = FontWeight.Bold
                                 )
