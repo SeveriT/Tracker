@@ -127,7 +127,6 @@ fun WavyProgressIndicator(
 private fun ElasticColumnWrapper(
     content: @Composable () -> Unit
 ) {
-    // Column scaling removed as it was reported as clunky
     Box(modifier = Modifier.fillMaxSize()) {
         content()
     }
@@ -300,6 +299,7 @@ fun WorkoutScreen(
                                 label = "scale"
                             )
 
+                            val assistInteractionSource = remember { MutableInteractionSource() }
                             AssistChip(
                                 onClick = { navigate(Screen.WorkoutTimer.name) },
                                 label = {
@@ -318,12 +318,23 @@ fun WorkoutScreen(
                                     leadingIconContentColor = MaterialTheme.colorScheme.surface
                                 ),
                                 modifier = Modifier.padding(end = 4.dp).graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+                                    .bounceClick(assistInteractionSource)
                             )
                         }
-                        IconButton(onClick = { navigate(Screen.Notes.name) }) {
+                        val notesInteractionSource = remember { MutableInteractionSource() }
+                        IconButton(
+                            onClick = { navigate(Screen.Notes.name) },
+                            interactionSource = notesInteractionSource,
+                            modifier = Modifier.bounceClick(notesInteractionSource)
+                        ) {
                             Icon(Icons.Default.Create, contentDescription = "Notes", tint = MaterialTheme.colorScheme.onSurface)
                         }
-                        IconButton(onClick = { navigate(Screen.Settings.name) }) {
+                        val settingsInteractionSource = remember { MutableInteractionSource() }
+                        IconButton(
+                            onClick = { navigate(Screen.Settings.name) },
+                            interactionSource = settingsInteractionSource,
+                            modifier = Modifier.bounceClick(settingsInteractionSource)
+                        ) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     },
@@ -579,20 +590,10 @@ fun WorkoutScreen(
             ) {
                 if (hasMusicWidget) {
                     val musicInteractionSource = remember { MutableInteractionSource() }
-                    val musicPressed by musicInteractionSource.collectIsPressedAsState()
-                    val musicScale by animateFloatAsState(
-                        targetValue = if (musicPressed) 0.985f else 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = if (musicPressed) Spring.StiffnessLow else Spring.StiffnessMedium
-                        ),
-                        label = "scale"
-                    )
-
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .graphicsLayer(scaleX = musicScale, scaleY = musicScale)
+                            .bounceClick(musicInteractionSource)
                             .padding(top = if (isFabVisible && currentRoute in fabScreens) 80.dp else 0.dp)
                     ) {
                         Box(
@@ -644,9 +645,13 @@ fun WorkoutScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
+                                    val nextInteractionSource = remember { MutableInteractionSource() }
                                     Box(
                                         modifier = Modifier.size(52.dp).clip(CircleShape)
+                                            .bounceClick(nextInteractionSource)
                                             .combinedClickable(
+                                                interactionSource = nextInteractionSource,
+                                                indication = null,
                                                 onClick = {
                                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                     MediaRepository.getInstance().nextTrack()
@@ -665,12 +670,18 @@ fun WorkoutScreen(
                                             modifier = Modifier.size(28.dp)
                                         )
                                     }
+                                    val playInteractionSource = remember { MutableInteractionSource() }
                                     Box(
                                         modifier = Modifier.size(52.dp).clip(CircleShape)
-                                            .combinedClickable(onClick = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                MediaRepository.getInstance().togglePlayPause()
-                                            }),
+                                            .bounceClick(playInteractionSource)
+                                            .combinedClickable(
+                                                interactionSource = playInteractionSource,
+                                                indication = null,
+                                                onClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    MediaRepository.getInstance().togglePlayPause()
+                                                }
+                                            ),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
@@ -706,20 +717,10 @@ fun WorkoutScreen(
                         .padding(bottom = if (hasMusicWidget) 0.dp else 25.dp)
                 ) {
                     val fabInteractionSource = remember { MutableInteractionSource() }
-                    val fabPressed by fabInteractionSource.collectIsPressedAsState()
-                    val fabScale by animateFloatAsState(
-                        targetValue = if (fabPressed) 0.96f else 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = if (fabPressed) Spring.StiffnessLow else Spring.StiffnessMedium
-                        ),
-                        label = "scale"
-                    )
-
                     Box(
                         modifier = Modifier
                             .size(70.dp)
-                            .graphicsLayer(scaleX = fabScale, scaleY = fabScale)
+                            .bounceClick(fabInteractionSource)
                             .clip(MaterialTheme.shapes.large)
                             .background(Color.Black.copy(alpha = 0.95f))
                     ) {

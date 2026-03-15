@@ -2,6 +2,12 @@
 
 package com.serkka.tracker
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
@@ -21,6 +27,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlin.math.roundToInt
 
@@ -64,6 +75,21 @@ internal fun getIconForActivity(type: String): ImageVector = when (type) {
     else             -> Icons.Default.Star
 }
 
+// ── Animations ────────────────────────────────────────────────────────────────
+
+fun Modifier.bounceClick(interactionSource: InteractionSource) = composed {
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessHigh
+        ),
+        label = "bounceScale"
+    )
+    this.graphicsLayer(scaleX = scale, scaleY = scale)
+}
+
 // ── Shared dialogs ────────────────────────────────────────────────────────────
 
 @Composable
@@ -73,6 +99,9 @@ internal fun ConfirmDeleteDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val confirmInteractionSource = remember { MutableInteractionSource() }
+    val dismissInteractionSource = remember { MutableInteractionSource() }
+    
     AlertDialog(
         onDismissRequest = onDismiss,
         title   = { Text(title) },
@@ -80,11 +109,17 @@ internal fun ConfirmDeleteDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
+                interactionSource = confirmInteractionSource,
+                modifier = Modifier.bounceClick(confirmInteractionSource),
                 colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) { Text("Delete") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(
+                onClick = onDismiss,
+                interactionSource = dismissInteractionSource,
+                modifier = Modifier.bounceClick(dismissInteractionSource)
+            ) { Text("Cancel") }
         }
     )
 }

@@ -231,9 +231,11 @@ fun WorkoutTimerScreen(
                 enter = fadeIn() + slideInHorizontally { -it },
                 exit = fadeOut() + slideOutHorizontally { -it }
             ) {
+                val stopInteractionSource = remember { MutableInteractionSource() }
                 FilledTonalIconButton(
                     onClick = { timerViewModel.requestStop() },
-                    modifier = Modifier.size(80.dp),
+                    interactionSource = stopInteractionSource,
+                    modifier = Modifier.size(80.dp).bounceClick(stopInteractionSource),
                     colors = IconButtonDefaults.filledTonalIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
                     )
@@ -246,10 +248,13 @@ fun WorkoutTimerScreen(
                 }
             }
 
+
             // Start / Pause — always visible once hasStarted, or as the initial start button
+            val startInteractionSource = remember { MutableInteractionSource() }
             FloatingActionButton(
                 onClick = { timerViewModel.toggleRunning() },
-                modifier = Modifier.size(80.dp),
+                interactionSource = startInteractionSource,
+                modifier = Modifier.size(80.dp).bounceClick(startInteractionSource),
                 containerColor = if (isRunning) MaterialTheme.colorScheme.secondary
                 else MaterialTheme.colorScheme.primary,
                 shape = CircleShape
@@ -368,25 +373,32 @@ private fun UploadWorkoutDialog(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val discardInteractionSource = remember { MutableInteractionSource() }
+                val cancelInteractionSource = remember { MutableInteractionSource() }
+                val uploadInteractionSource = remember { MutableInteractionSource() }
+                
                 TextButton(
                     onClick = onDiscard,
+                    interactionSource = discardInteractionSource,
                     enabled = !isUploading,
-                    modifier = Modifier.weight(1.2f)
+                    modifier = Modifier.weight(1.2f).bounceClick(discardInteractionSource)
                 ) {
                     Text("Discard", color = MaterialTheme.colorScheme.error)
                 }
                 TextButton(
                     onClick = onDismiss,
+                    interactionSource = cancelInteractionSource,
                     enabled = !isUploading,
-                    modifier = Modifier.weight(1.2f)
+                    modifier = Modifier.weight(1.2f).bounceClick(cancelInteractionSource)
                 ) {
                     Text("Cancel")
                 }
                 Spacer(Modifier.width(4.dp))
                 Button(
                     onClick = onUpload,
+                    interactionSource = uploadInteractionSource,
                     enabled = activityName.isNotBlank() && !isUploading && isStravaLinked,
-                    modifier = Modifier.weight(1.6f)
+                    modifier = Modifier.weight(1.6f).bounceClick(uploadInteractionSource)
                 ) {
                     if (isUploading) {
                         CircularProgressIndicator(

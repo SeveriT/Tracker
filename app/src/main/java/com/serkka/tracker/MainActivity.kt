@@ -19,6 +19,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
@@ -26,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 
 
@@ -79,17 +81,28 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (showExitDialog) {
+                    val exitInteractionSource = remember { MutableInteractionSource() }
+                    val cancelInteractionSource = remember { MutableInteractionSource() }
+                    
                     AlertDialog(
                         onDismissRequest = { showExitDialog = false },
                         title = { Text("Exit App") },
                         text  = { Text("Are you sure you want to exit?") },
                         confirmButton = {
-                            Button(onClick = { finishAffinity() }) {
+                            Button(
+                                onClick = { finishAffinity() },
+                                interactionSource = exitInteractionSource,
+                                modifier = Modifier.bounceClick(exitInteractionSource)
+                            ) {
                                 Text("Exit")
                             }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showExitDialog = false }) {
+                            TextButton(
+                                onClick = { showExitDialog = false },
+                                interactionSource = cancelInteractionSource,
+                                modifier = Modifier.bounceClick(cancelInteractionSource)
+                            ) {
                                 Text("Cancel")
                             }
                         }

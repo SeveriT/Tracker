@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -79,6 +80,7 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
         ) {
             if (activities.isEmpty() && !isLoading) {
                 item {
+                    val interactionSource = remember { MutableInteractionSource() }
                     Text("Link Strava to see your progress", style = MaterialTheme.typography.bodyLarge)
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
@@ -93,6 +95,8 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                                 .build()
                             context.startActivity(Intent(Intent.ACTION_VIEW, authUri))
                         },
+                        interactionSource = interactionSource,
+                        modifier = Modifier.bounceClick(interactionSource),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = StravaOrange, contentColor = Color.Black
                         )

@@ -2,6 +2,7 @@
 
 package com.serkka.tracker
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.ImeAction
@@ -60,6 +62,7 @@ fun NumericInput(
         textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontSize = 14.sp),
         leadingIcon = {
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                val subInteractionSource = remember { MutableInteractionSource() }
                 IconButton(
                     onClick = {
                         val current = value.toLeadFloat() ?: 0f
@@ -69,7 +72,8 @@ fun NumericInput(
                             onValueChange(formatWeight(next))
                         }
                     },
-                    modifier = Modifier.size(24.dp)
+                    interactionSource = subInteractionSource,
+                    modifier = Modifier.size(24.dp).bounceClick(subInteractionSource)
                 ) {
                     Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(20.dp))
                 }
@@ -77,6 +81,7 @@ fun NumericInput(
         },
         trailingIcon = {
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                val addInteractionSource = remember { MutableInteractionSource() }
                 IconButton(
                     onClick = {
                         val current = value.toLeadFloat() ?: 0f
@@ -84,7 +89,8 @@ fun NumericInput(
                                    else current + step
                         onValueChange(formatWeight(next))
                     },
-                    modifier = Modifier.size(24.dp)
+                    interactionSource = addInteractionSource,
+                    modifier = Modifier.size(24.dp).bounceClick(addInteractionSource)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(20.dp))
                 }

@@ -4,6 +4,7 @@ package com.serkka.tracker
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -120,7 +121,14 @@ fun NoteDialog(
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
-            confirmButton = { TextButton(onClick = { showDatePicker = false }) { Text("OK") } }
+            confirmButton = {
+                val okInteractionSource = remember { MutableInteractionSource() }
+                TextButton(
+                    onClick = { showDatePicker = false },
+                    interactionSource = okInteractionSource,
+                    modifier = Modifier.bounceClick(okInteractionSource)
+                ) { Text("OK") }
+            }
         ) { DatePicker(state = datePickerState) }
     }
 
@@ -154,7 +162,12 @@ fun NoteDialog(
                     label = { Text("Date") },
                     readOnly = true,
                     trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
+                        val dateInteractionSource = remember { MutableInteractionSource() }
+                        IconButton(
+                            onClick = { showDatePicker = true },
+                            interactionSource = dateInteractionSource,
+                            modifier = Modifier.bounceClick(dateInteractionSource)
+                        ) {
                             Icon(Icons.Default.DateRange, null)
                         }
                     },
@@ -169,17 +182,32 @@ fun NoteDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (note != null && onDelete != null) {
-                    IconButton(onClick = onDelete) {
+                    val deleteInteractionSource = remember { MutableInteractionSource() }
+                    IconButton(
+                        onClick = onDelete,
+                        interactionSource = deleteInteractionSource,
+                        modifier = Modifier.bounceClick(deleteInteractionSource)
+                    ) {
                         Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
                     }
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-                Button(onClick = {
-                    if (content.isNotEmpty()) {
-                        onConfirm(title, content, datePickerState.selectedDateMillis ?: System.currentTimeMillis())
-                    }
-                }) { Text("Save") }
+                val cancelInteractionSource = remember { MutableInteractionSource() }
+                val saveInteractionSource = remember { MutableInteractionSource() }
+                TextButton(
+                    onClick = onDismiss,
+                    interactionSource = cancelInteractionSource,
+                    modifier = Modifier.bounceClick(cancelInteractionSource)
+                ) { Text("Cancel") }
+                Button(
+                    onClick = {
+                        if (content.isNotEmpty()) {
+                            onConfirm(title, content, datePickerState.selectedDateMillis ?: System.currentTimeMillis())
+                        }
+                    },
+                    interactionSource = saveInteractionSource,
+                    modifier = Modifier.bounceClick(saveInteractionSource)
+                ) { Text("Save") }
             }
         },
         dismissButton = null

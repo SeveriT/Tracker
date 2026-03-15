@@ -9,6 +9,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -123,10 +124,12 @@ fun WeightTrackingPage(
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 } else {
+                                    val bmiInteractionSource = remember { MutableInteractionSource() }
                                     TextButton(
                                         onClick = { /* handled below via heightCm dialog */ },
+                                        interactionSource = bmiInteractionSource,
                                         contentPadding = PaddingValues(0.dp),
-                                        modifier = Modifier.height(24.dp)
+                                        modifier = Modifier.height(24.dp).bounceClick(bmiInteractionSource)
                                     ) {
                                         Text(
                                             "Set height for BMI",
@@ -232,7 +235,12 @@ fun WeightTrackingPage(
                                 )
                             }
                         }
-                        IconButton(onClick = { onWeightDelete(weightEntry) }) {
+                        val deleteInteractionSource = remember { MutableInteractionSource() }
+                        IconButton(
+                            onClick = { onWeightDelete(weightEntry) },
+                            interactionSource = deleteInteractionSource,
+                            modifier = Modifier.bounceClick(deleteInteractionSource)
+                        ) {
                             Icon(
                                 Icons.Default.Delete,
                                 contentDescription = "Delete",
@@ -417,7 +425,14 @@ fun BodyWeightDialog(
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
-            confirmButton = { TextButton(onClick = { showDatePicker = false }) { Text("OK") } }
+            confirmButton = {
+                val okInteractionSource = remember { MutableInteractionSource() }
+                TextButton(
+                    onClick = { showDatePicker = false },
+                    interactionSource = okInteractionSource,
+                    modifier = Modifier.bounceClick(okInteractionSource)
+                ) { Text("OK") }
+            }
         ) { DatePicker(state = datePickerState) }
     }
 
@@ -448,7 +463,12 @@ fun BodyWeightDialog(
                     label = { Text("Date") },
                     readOnly = true,
                     trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
+                        val dateInteractionSource = remember { MutableInteractionSource() }
+                        IconButton(
+                            onClick = { showDatePicker = true },
+                            interactionSource = dateInteractionSource,
+                            modifier = Modifier.bounceClick(dateInteractionSource)
+                        ) {
                             Icon(Icons.Default.DateRange, null)
                         }
                     },
@@ -457,11 +477,25 @@ fun BodyWeightDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val w = weight.toLeadFloat() ?: 0f
-                if (w > 0) onConfirm(w, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), notes)
-            }) { Text("Save") }
+            val cancelInteractionSource = remember { MutableInteractionSource() }
+            val saveInteractionSource = remember { MutableInteractionSource() }
+            Row {
+                TextButton(
+                    onClick = onDismiss,
+                    interactionSource = cancelInteractionSource,
+                    modifier = Modifier.bounceClick(cancelInteractionSource)
+                ) { Text("Cancel") }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        val w = weight.toLeadFloat() ?: 0f
+                        if (w > 0) onConfirm(w, datePickerState.selectedDateMillis ?: System.currentTimeMillis(), notes)
+                    },
+                    interactionSource = saveInteractionSource,
+                    modifier = Modifier.bounceClick(saveInteractionSource)
+                ) { Text("Save") }
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = null
     )
 }

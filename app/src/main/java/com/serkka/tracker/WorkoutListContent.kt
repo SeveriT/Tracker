@@ -7,6 +7,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -230,7 +231,12 @@ fun WorkoutDialog(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("OK") }
+                val okInteractionSource = remember { MutableInteractionSource() }
+                TextButton(
+                    onClick = { showDatePicker = false },
+                    interactionSource = okInteractionSource,
+                    modifier = Modifier.bounceClick(okInteractionSource)
+                ) { Text("OK") }
             }
         ) { DatePicker(state = datePickerState) }
     }
@@ -379,7 +385,12 @@ fun WorkoutDialog(
                     label = { Text("Date") },
                     readOnly = true,
                     trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
+                        val dateInteractionSource = remember { MutableInteractionSource() }
+                        IconButton(
+                            onClick = { showDatePicker = true },
+                            interactionSource = dateInteractionSource,
+                            modifier = Modifier.bounceClick(dateInteractionSource)
+                        ) {
                             Icon(Icons.Default.DateRange, null)
                         }
                     },
@@ -396,12 +407,22 @@ fun WorkoutDialog(
                 if (onDelete != null || onCopy != null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         onCopy?.let {
-                            IconButton(onClick = it) {
+                            val copyInteractionSource = remember { MutableInteractionSource() }
+                            IconButton(
+                                onClick = it,
+                                interactionSource = copyInteractionSource,
+                                modifier = Modifier.bounceClick(copyInteractionSource)
+                            ) {
                                 Icon(Icons.Default.ContentCopy, "Copy", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         onDelete?.let {
-                            IconButton(onClick = it) {
+                            val deleteInteractionSource = remember { MutableInteractionSource() }
+                            IconButton(
+                                onClick = it,
+                                interactionSource = deleteInteractionSource,
+                                modifier = Modifier.bounceClick(deleteInteractionSource)
+                            ) {
                                 Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
                             }
                         }
@@ -412,19 +433,30 @@ fun WorkoutDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
-                    Button(onClick = {
-                        onConfirm(
-                            exercise,
-                            sets.toIntOrNull() ?: 0,
-                            reps.toIntOrNull() ?: 0,
-                            weight.toLeadFloat() ?: 0f,
-                            datePickerState.selectedDateMillis ?: System.currentTimeMillis(),
-                            isPB,
-                            weightUnit,
-                            notes
-                        )
-                    }) { Text("Save") }
+                    val cancelInteractionSource = remember { MutableInteractionSource() }
+                    val saveInteractionSource = remember { MutableInteractionSource() }
+                    
+                    TextButton(
+                        onClick = onDismiss,
+                        interactionSource = cancelInteractionSource,
+                        modifier = Modifier.bounceClick(cancelInteractionSource)
+                    ) { Text("Cancel") }
+                    Button(
+                        onClick = {
+                            onConfirm(
+                                exercise,
+                                sets.toIntOrNull() ?: 0,
+                                reps.toIntOrNull() ?: 0,
+                                weight.toLeadFloat() ?: 0f,
+                                datePickerState.selectedDateMillis ?: System.currentTimeMillis(),
+                                isPB,
+                                weightUnit,
+                                notes
+                            )
+                        },
+                        interactionSource = saveInteractionSource,
+                        modifier = Modifier.bounceClick(saveInteractionSource)
+                    ) { Text("Save") }
                 }
             }
         },

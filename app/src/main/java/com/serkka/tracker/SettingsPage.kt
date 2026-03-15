@@ -174,15 +174,6 @@ fun SettingsPage(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(
-                "Support",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-
-        item {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -236,7 +227,7 @@ fun SettingsPage(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment = Alignment.Bottom,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         OutlinedTextField(
@@ -262,6 +253,7 @@ fun SettingsPage(
                                 }
                             }
                         )
+                        val startInteractionSource = remember { MutableInteractionSource() }
                         Button(
                             onClick = {
                                 val h = heightInput.toIntOrNull()
@@ -270,8 +262,12 @@ fun SettingsPage(
                                     saved = true
                                 }
                             },
+                            interactionSource = startInteractionSource,
                             enabled = heightInput.toIntOrNull()?.let { it in 100..250 } == true,
-                            modifier = Modifier.height(50.dp),
+                            modifier = Modifier
+                                .height(56.dp)
+                                .width(100.dp)
+                                .bounceClick(startInteractionSource),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = primaryColor,
                                 contentColor = Color.Black,
@@ -293,7 +289,7 @@ fun SettingsPage(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
                                     if (saved) "Saved" else "Save",
-                                    fontSize = 12.sp,
+                                    fontSize = 14.sp,
                                     textAlign = TextAlign.Left
                                 )
                             }
@@ -376,7 +372,7 @@ fun SettingsPage(
 
         item {
             Text(
-                "Data Backup & Restore",
+                "Backup & Restore",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -400,7 +396,7 @@ fun SettingsPage(
 
                     NextBackupCountdown(primaryColor = primaryColor)
 
-                    // Row 1: Drive + Local backup
+                    // Row 1: Drive + Google Sign Out
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -425,7 +421,7 @@ fun SettingsPage(
                         )
                     }
 
-                    // Row 2: Restore + Google Sign Out
+                    // Row 2: Local + Restore
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -512,6 +508,8 @@ fun SettingsPage(
     }
 
     if (showDeleteConfirmDialog) {
+        val deleteInteractionSource = remember { MutableInteractionSource() }
+        val cancelInteractionSource = remember { MutableInteractionSource() }
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
             icon = {
@@ -546,11 +544,17 @@ fun SettingsPage(
                             }
                         }
                     },
+                    interactionSource = deleteInteractionSource,
+                    modifier = Modifier.bounceClick(deleteInteractionSource),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) { Text("Delete All", color = Color.White) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirmDialog = false }) { Text("Cancel") }
+                TextButton(
+                    onClick = { showDeleteConfirmDialog = false },
+                    interactionSource = cancelInteractionSource,
+                    modifier = Modifier.bounceClick(cancelInteractionSource)
+                ) { Text("Cancel") }
             }
         )
     }
@@ -562,6 +566,7 @@ fun SettingsPage(
 
 @Composable
 fun UserGuideDialog(onDismiss: () -> Unit) {
+    val gotItInteractionSource = remember { MutableInteractionSource() }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("User Guide", fontWeight = FontWeight.Bold) },
@@ -569,9 +574,9 @@ fun UserGuideDialog(onDismiss: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 450.dp)
+                    .heightIn(max = 500.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 GuideSection("1. Navigation", "Switch between Timer, Workouts, Summary, Weight, and Strava. Swipe horizontally to glide between screens.")
                 GuideSection("2. Workout Timer", "Start/Pause with the main button. Tap the timer ring to start a new lap. Use the status bar notification to track time outside the app.")
@@ -582,7 +587,11 @@ fun UserGuideDialog(onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Got it") }
+            TextButton(
+                onClick = onDismiss,
+                interactionSource = gotItInteractionSource,
+                modifier = Modifier.bounceClick(gotItInteractionSource)
+            ) { Text("Got it") }
         }
     )
 }
@@ -606,9 +615,11 @@ private fun SettingsButton(
     modifier: Modifier = Modifier,
     contentColor: Color = Color.Black
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
-        modifier = modifier.height(50.dp),
+        interactionSource = interactionSource,
+        modifier = modifier.height(50.dp).bounceClick(interactionSource),
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
             contentColor = contentColor
