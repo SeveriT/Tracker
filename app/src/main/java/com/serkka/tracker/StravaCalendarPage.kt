@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -39,7 +40,7 @@ import java.util.*
 // ── Strava calendar page ──────────────────────────────────────────────────────
 
 @Composable
-fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
+fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color, topPadding: Dp) {
     val context = LocalContext.current
     val activities by stravaViewModel.activities.collectAsState()
     val isLoading by stravaViewModel.isLoading.collectAsState()
@@ -71,11 +72,12 @@ fun StravaCalendarPage(stravaViewModel: StravaViewModel, primaryColor: Color) {
                 refreshTrigger = true
                 stravaViewModel.checkAndFetchActivities()
             }
-        }
+        },
+        modifier = Modifier.padding(top = topPadding)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(16.dp, 6.dp, 16.dp, 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (activities.isEmpty() && !isLoading) {

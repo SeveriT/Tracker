@@ -91,9 +91,10 @@ fun formatElapsed(totalSeconds: Long): String {
 
 @Composable
 fun WorkoutTimerScreen(
-    timerViewModel:  WorkoutTimerViewModel,
+    timerViewModel: WorkoutTimerViewModel,
     stravaViewModel: StravaViewModel,
-    bottomPadding:   Dp = 0.dp,
+    bottomPadding: Dp = 0.dp,
+    topPadding: Dp,
 ) {
     val context = LocalContext.current
 
@@ -150,10 +151,12 @@ fun WorkoutTimerScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp)
-            .padding(top = 42.dp, bottom = 8.dp + bottomPadding),
+            .padding(top = topPadding, bottom = 8.dp + bottomPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+
+        Spacer(modifier = Modifier.weight(0.5f))
 
         Text(
             text = if (hasStarted) lapTimeString else "",
@@ -165,7 +168,7 @@ fun WorkoutTimerScreen(
         )
 
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.weight(0.5f))
 
         // ── Ring + time display ───────────────────────────────────────────────
         Box(
@@ -217,7 +220,7 @@ fun WorkoutTimerScreen(
             }
         }
 
-        Spacer(modifier = Modifier.weight(0.6f))
+        Spacer(modifier = Modifier.weight(0.5f))
 
         // ── Controls ──────────────────────────────────────────────────────────
         Row(
@@ -269,7 +272,8 @@ fun WorkoutTimerScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(80.dp))
+        Spacer(modifier = Modifier.weight(0.5f))
+        Spacer(modifier = Modifier.height(60.dp))
 
         // ── Upload dialog ─────────────────────────────────────────────────────────
         if (showUploadDialog) {

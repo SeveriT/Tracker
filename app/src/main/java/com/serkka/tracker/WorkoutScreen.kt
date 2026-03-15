@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -274,81 +275,13 @@ fun WorkoutScreen(
         }
     ) {
         Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            modifier = Modifier.padding(start = 8.dp),
-                            text = Screen.entries.find { it.name == currentRoute }?.title ?: ""
-                        )
-                    },
-                    actions = {
-                        AnimatedVisibility(
-                            visible = timerIsRunning && currentRoute != Screen.WorkoutTimer.name,
-                            enter   = fadeIn() + slideInHorizontally { it },
-                            exit    = fadeOut() + slideOutHorizontally { it }
-                        ) {
-                            val infinitePulse = rememberInfiniteTransition(label = "pulse")
-                            val pulseScale by infinitePulse.animateFloat(
-                                initialValue = 1f,
-                                targetValue = 1.03f,
-                                animationSpec = infiniteRepeatable(
-                                    animation = tween(1200, easing = FastOutSlowInEasing),
-                                    repeatMode = RepeatMode.Reverse
-                                ),
-                                label = "scale"
-                            )
-
-                            val assistInteractionSource = remember { MutableInteractionSource() }
-                            AssistChip(
-                                onClick = { navigate(Screen.WorkoutTimer.name) },
-                                label = {
-                                    Text(
-                                        text = formatElapsed(timerElapsed),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Timer, contentDescription = "Timer running", modifier = Modifier.size(16.dp))
-                                },
-                                colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary,
-                                    labelColor = MaterialTheme.colorScheme.surface,
-                                    leadingIconContentColor = MaterialTheme.colorScheme.surface
-                                ),
-                                modifier = Modifier.padding(end = 4.dp).graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
-                                    .bounceClick(assistInteractionSource)
-                            )
-                        }
-                        val notesInteractionSource = remember { MutableInteractionSource() }
-                        IconButton(
-                            onClick = { navigate(Screen.Notes.name) },
-                            interactionSource = notesInteractionSource,
-                            modifier = Modifier.bounceClick(notesInteractionSource)
-                        ) {
-                            Icon(Icons.Default.Create, contentDescription = "Notes", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                        val settingsInteractionSource = remember { MutableInteractionSource() }
-                        IconButton(
-                            onClick = { navigate(Screen.Settings.name) },
-                            interactionSource = settingsInteractionSource,
-                            modifier = Modifier.bounceClick(settingsInteractionSource)
-                        ) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        scrolledContainerColor = MaterialTheme.colorScheme.background,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                )
-            },
+            topBar = {},
             bottomBar = {},
-        ) { innerPadding ->
+        ) { _ ->
+            val topBarBaseHeight = 55.dp
+            val statusBarHeight = with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }
+            val totalTopPadding = topBarBaseHeight + statusBarHeight
+
             Box(modifier = Modifier.fillMaxSize()) {
             val swipeScreens = listOf(
                 Screen.WorkoutTimer.name,
@@ -363,7 +296,6 @@ fun WorkoutScreen(
                 startDestination = Screen.Summary.name,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = innerPadding.calculateTopPadding())
                     .pointerInput(currentRoute) {
                         var dragTotal = 0f
                         detectHorizontalDragGestures(
@@ -401,7 +333,8 @@ fun WorkoutScreen(
                             onWorkoutDelete = { workoutToDelete = it },
                             onWorkoutCopy   = { copyingWorkout = it },
                             onNavigateToWeightTracking = { navigate(Screen.WeightTracking.name) },
-                            listState = summaryListState
+                            listState = summaryListState,
+                            topPadding = totalTopPadding
                         )
                     }
                 }
@@ -413,12 +346,13 @@ fun WorkoutScreen(
                             onDelete  = { workoutToDelete = it },
                             onEdit    = { editingWorkout = it },
                             onCopy    = { copyingWorkout = it },
-                            listState = workoutsListState
+                            listState = workoutsListState,
+                            topPadding = totalTopPadding
                         )
                     }
                 }
                 composable(Screen.StravaCalendar.name) {
-                    StravaCalendarPage(stravaViewModel, primaryColor)
+                    StravaCalendarPage(stravaViewModel, primaryColor, topPadding = totalTopPadding)
                 }
                 composable(Screen.WeightTracking.name) {
                     ElasticColumnWrapper {
@@ -427,12 +361,13 @@ fun WorkoutScreen(
                             primaryColor = primaryColor,
                             onWeightClick  = { editingWeight = it },
                             onWeightDelete = { weightToDelete = it },
-                            listState = weightListState
+                            listState = weightListState,
+                            topPadding = totalTopPadding
                         )
                     }
                 }
                 composable(Screen.WorkoutStats.name) {
-                    WorkoutStatsPage(workouts, primaryColor)
+                    WorkoutStatsPage(workouts, primaryColor, topPadding = totalTopPadding)
                 }
                 composable(Screen.Notes.name) {
                     ElasticColumnWrapper {
@@ -441,7 +376,8 @@ fun WorkoutScreen(
                             primaryColor = primaryColor,
                             onNoteClick  = { editingNote = it },
                             onNoteDelete = { noteToDelete = it },
-                            listState = notesListState
+                            listState = notesListState,
+                            topPadding = totalTopPadding
                         )
                     }
                 }
@@ -450,7 +386,8 @@ fun WorkoutScreen(
                         primaryColor = primaryColor,
                         themeViewModel = themeViewModel,
                         stravaViewModel = stravaViewModel,
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        topPadding = totalTopPadding
                     )
                 }
                 composable(Screen.WorkoutTimer.name) {
@@ -459,9 +396,109 @@ fun WorkoutScreen(
                     WorkoutTimerScreen(
                         timerViewModel  = timerViewModel,
                         stravaViewModel = stravaViewModel,
-                        bottomPadding   = if (musicVisible) 88.dp else 0.dp
+                        bottomPadding   = if (musicVisible) 88.dp else 0.dp,
+                        topPadding = totalTopPadding
                     )
                 }
+            }
+
+            // ── Top Bar (Overlay) ─────────────────────────────────────────────
+            val bgColor = MaterialTheme.colorScheme.background
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to bgColor,
+                                0.5f to bgColor.copy(alpha = 0.9f),
+                                1.0f to Color.Transparent
+                            )
+                        )
+                    )
+                    .statusBarsPadding()
+                    .height(topBarBaseHeight)
+            ) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            modifier = Modifier.padding(start = 8.dp),
+                            text = Screen.entries.find { it.name == currentRoute }?.title ?: "",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    windowInsets = WindowInsets(0),
+                    actions = {
+                        AnimatedVisibility(
+                            visible = timerIsRunning && currentRoute != Screen.WorkoutTimer.name,
+                            enter   = fadeIn() + slideInHorizontally { it },
+                            exit    = fadeOut() + slideOutHorizontally { it }
+                        ) {
+                            val infinitePulse = rememberInfiniteTransition(label = "pulse")
+                            val pulseScale by infinitePulse.animateFloat(
+                                initialValue = 1f,
+                                targetValue = 1.02f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(1200, easing = FastOutSlowInEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "scale"
+                            )
+
+                            val assistInteractionSource = remember { MutableInteractionSource() }
+                            AssistChip(
+                                onClick = { navigate(Screen.WorkoutTimer.name) },
+                                label = {
+                                    Text(
+                                        text = formatElapsed(timerElapsed),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Timer, null, modifier = Modifier.size(14.dp))
+                                },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                    labelColor = MaterialTheme.colorScheme.surface,
+                                    leadingIconContentColor = MaterialTheme.colorScheme.surface
+                                ),
+                                modifier = Modifier.padding(end = 4.dp).height(28.dp)
+                                    .graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+                                    .bounceClick(assistInteractionSource)
+                            )
+                        }
+                        val notesInteractionSource = remember { MutableInteractionSource() }
+                        IconButton(
+                            onClick = { navigate(Screen.Notes.name) },
+                            interactionSource = notesInteractionSource,
+                            modifier = Modifier.size(42.dp).bounceClick(notesInteractionSource)
+                        ) {
+                            Icon(Icons.Default.Create, null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurface)
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        val settingsInteractionSource = remember { MutableInteractionSource() }
+                        IconButton(
+                            onClick = { navigate(Screen.Settings.name) },
+                            interactionSource = settingsInteractionSource,
+                            modifier = Modifier.size(42.dp).bounceClick(settingsInteractionSource)
+                        ) {
+                            Icon(Icons.Default.Settings, null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurface)
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                )
             }
 
             // ── Dialogs ───────────────────────────────────────────────────────
@@ -714,7 +751,6 @@ fun WorkoutScreen(
                     enter = fadeIn() + scaleIn(),
                     exit  = fadeOut() + scaleOut(),
                     modifier = Modifier.align(if (hasMusicWidget) Alignment.TopEnd else Alignment.BottomEnd)
-                        .padding(bottom = if (hasMusicWidget) 0.dp else 25.dp)
                 ) {
                     val fabInteractionSource = remember { MutableInteractionSource() }
                     Box(
@@ -757,7 +793,6 @@ fun WorkoutScreen(
                 }
             }
 
-            val bgColor = MaterialTheme.colorScheme.background
             NavigationBar(
                 containerColor = Color.Transparent,
                 tonalElevation = 0.dp,

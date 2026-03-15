@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
@@ -50,7 +51,8 @@ fun SummaryPage(
     onWorkoutDelete: (Workout) -> Unit,
     onWorkoutCopy: (Workout) -> Unit,
     onNavigateToWeightTracking: () -> Unit,
-    listState: LazyListState = rememberLazyListState()
+    listState: LazyListState = rememberLazyListState(),
+    topPadding: Dp = 0.dp
 ) {
     val context = LocalContext.current
     val activities by stravaViewModel.activities.collectAsState()
@@ -101,12 +103,13 @@ fun SummaryPage(
                 refreshTrigger = true
                 stravaViewModel.checkAndFetchActivities()
             }
-        }
+        },
+        modifier = Modifier.padding(top = topPadding)
     ) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(16.dp, 6.dp, 16.dp, 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // ── Weekly streak dots ────────────────────────────────────────────

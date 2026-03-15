@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -56,7 +57,8 @@ fun SettingsPage(
     primaryColor: Color,
     themeViewModel: ThemeViewModel,
     stravaViewModel: StravaViewModel,
-    viewModel: WorkoutViewModel
+    viewModel: WorkoutViewModel,
+    topPadding: Dp
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -170,7 +172,7 @@ fun SettingsPage(
     // ── UI ────────────────────────────────────────────────────────────────────
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(top = topPadding + 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
@@ -504,7 +506,7 @@ fun SettingsPage(
 
 
 
-        item { Spacer(modifier = Modifier.height(130.dp)) }
+        item { Spacer(modifier = Modifier.height(145.dp)) }
     }
 
     if (showDeleteConfirmDialog) {

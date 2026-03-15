@@ -57,7 +57,7 @@ class StravaViewModel(application: Application) : AndroidViewModel(application) 
     val uploadState: StateFlow<UploadState> = _uploadState
 
     // How many recent activities to fetch full details for (to get calories)
-    private val DETAIL_FETCH_LIMIT = 7
+    private val DETAIL_FETCH_LIMIT = 5
 
     private val stravaApi: StravaApi by lazy {
         val logging = HttpLoggingInterceptor { message ->

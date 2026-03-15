@@ -15,11 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import java.util.Locale
 
 @Composable
-fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
+fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color, topPadding: Dp) {
     val workoutStats = remember(workouts) {
         workouts.filter { it.weightUnit == "kg" }
             .groupBy { it.exerciseName }
@@ -38,7 +39,7 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
+        contentPadding = PaddingValues(top = topPadding + 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
     ) {
         item {
             ElevatedCard(
@@ -131,6 +132,6 @@ fun WorkoutStatsPage(workouts: List<Workout>, primaryColor: Color) {
             }
         }
 
-        item { Spacer(modifier = Modifier.height(75.dp)) }
+        item { Spacer(modifier = Modifier.height(155.dp)) }
     }
 }

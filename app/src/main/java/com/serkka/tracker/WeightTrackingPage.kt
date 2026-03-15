@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
@@ -46,7 +47,8 @@ fun WeightTrackingPage(
     primaryColor: Color,
     onWeightClick: (BodyWeight) -> Unit,
     onWeightDelete: (BodyWeight) -> Unit,
-    listState: LazyListState = rememberLazyListState()
+    listState: LazyListState = rememberLazyListState(),
+    topPadding: Dp
 ) {
     val sortedWeights = remember(bodyWeights) { bodyWeights.sortedBy { it.date } }
 
@@ -72,7 +74,7 @@ fun WeightTrackingPage(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
+        contentPadding = PaddingValues(top = topPadding + 6.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
     ) {
         if (sortedWeights.isNotEmpty()) {
             item {
@@ -261,7 +263,7 @@ fun WeightTrackingPage(
             }
         }
 
-        item { Spacer(modifier = Modifier.height(150.dp)) }
+        item { Spacer(modifier = Modifier.height(155.dp)) }
     }
 }
 

@@ -4,6 +4,7 @@ package com.serkka.tracker
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -27,9 +28,12 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.serkka.tracker.ui.theme.PersonalBestGold
@@ -46,7 +50,8 @@ fun WorkoutListContent(
     onDelete: (Workout) -> Unit,
     onEdit: (Workout) -> Unit,
     onCopy: (Workout) -> Unit,
-    listState: LazyListState = rememberLazyListState()
+    listState: LazyListState = rememberLazyListState(),
+    topPadding: Dp = 0.dp
 ) {
     val groupedWorkouts = workouts.groupBy {
         SimpleDateFormat("EEEE d.M.yyyy", Locale.getDefault()).format(Date(it.date))
@@ -54,14 +59,27 @@ fun WorkoutListContent(
 
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = topPadding),
         contentPadding = PaddingValues(bottom = 170.dp)
     ) {
         groupedWorkouts.forEach { (date, workoutsInDay) ->
             stickyHeader {
+                val bgColor = MaterialTheme.colorScheme.background
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to bgColor,
+                                    0.5f to bgColor,
+                                    1.0f to Color.Transparent
+                                )
+                            )
+                        ),
+                    color = Color.Transparent
                 ) {
                     Text(
                         text = date,
@@ -95,6 +113,7 @@ fun WorkoutListContent(
                             onCopy = { onCopy(workout) }
                         )
                     }
+                    if (workoutPair.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         }
